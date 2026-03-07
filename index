@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIL-OS: SYSTEM_DECAY_INTERFACE</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d0101; 
+            --crt-red: #ff1a1a; 
+            --dim-red: #440000;
+            --terminal-green: #33ff33; /* For status highlights */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--crt-red);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* --- CRT OVERLAYS --- */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
+                        repeating-linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* --- MAIN DASHBOARD LAYOUT --- */
+        #container {
+            display: flex;
+            gap: 20px;
+            padding: 30px;
+            border: 2px solid var(--dim-red);
+            background: rgba(20, 0, 0, 0.8);
+            box-shadow: 0 0 40px #500;
+            position: relative;
+            animation: flicker 0.15s infinite;
+        }
+
+        /* --- STAT BARS SECTION --- */
+        #sidebar {
+            width: 200px;
+            border-left: 1px solid var(--dim-red);
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-group { margin-bottom: 25px; }
+        .stat-label { font-size: 14px; letter-spacing: 2px; margin-bottom: 5px; display: block; }
+        
+        .progress-bg {
+            height: 12px;
+            background: #200;
+            border: 1px solid var(--dim-red);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--crt-red);
+            box-shadow: 0 0 10px var(--crt-red);
+            width: 0%; /* Animated via JS */
+            transition: width 1s ease-in-out;
+        }
+
+        /* Unique styles for the 3 bars */
+        #bar-weird { background: linear-gradient(90deg, #f0f, #ff1a1a); }
+        #bar-rot { background: linear-gradient(90deg, #550, #220); border: 1px solid #770; }
+        #bar-grit { background: #666; filter: contrast(200%) grayscale(1); }
+
+        /* --- WHEEL SECTION --- */
+        h1 { font-size: 1rem; margin: 0 0 10px 0; border-bottom: 1px solid var(--crt-red); padding-bottom: 5px; }
+
+        @keyframes flicker {
+            0% { opacity: 0.98; }
+            50% { opacity: 1; }
+            100% { opacity: 0.97; }
+        }
+
+        .glitch-text { animation: textGlitch 2s infinite; }
+        @keyframes textGlitch {
+            0% { transform: translate(0); }
+            2% { transform: translate(-2px, 1px); color: #0f0; }
+            4% { transform: translate(2px, -1px); color: #f0f; }
+            6% { transform: translate(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div>
+        <h1 class="glitch-text">PERSONNEL_ID: <span id="user-name">GENERIC_UNIT</span></h1>
+        <div id="wheel-container"></div>
+    </div>
+
+    <div id="sidebar">
+        <div class="stat-group">
+            <span class="stat-label">WEIRD_INDEX</span>
+            <div class="progress-bg"><div id="bar-weird" class="progress-fill"></div></div>
+        </div>
+        <div class="stat-group">
+            <span class="stat-label">GRIT_STAMINA</span>
+            <div class="progress-bg"><div id="bar-grit" class="progress-fill"></div></div>
+        </div>
+        <div class="stat-group">
+            <span class="stat-label">ROT_DECAY</span>
+            <div class="progress-bg"><div id="bar-rot" class="progress-fill"></div></div>
+        </div>
+        <div style="font-size: 10px; color: #500; margin-top: 20px;">
+            > SCANNING BIOMETRICS...<br>
+            > DECAY DETECTED IN SECTOR 7<br>
+            > NOISE RATIO: 0.82
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configuration
+    const width = 400;
+    const height = 400;
+    const radius = 160;
+
+    const emotions = ["Joy", "Trust", "Fear", "Surprise", "Sadness", "Disgust", "Anger", "Anticipation"];
+
+    const svg = d3.select("#wheel-container")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .append("g")
+        .attr("transform", `translate(${width / 2},${height / 2})`);
+
+    function generateCharacter(name, weird, grit, rot) {
+        document.getElementById('user-name').innerText = name;
+        
+        // Update Bars
+        document.getElementById('bar-weird').style.width = weird + "%";
+        document.getElementById('bar-grit').style.width = grit + "%";
+        document.getElementById('bar-rot').style.width = rot + "%";
+
+        // Draw Wheel
+        svg.selectAll("*").remove();
+        const angleStep = (Math.PI * 2) / emotions.length;
+
+        emotions.forEach((label, i) => {
+            const angle = i * angleStep;
+            const petal = d3.arc()
+                .innerRadius(0)
+                .outerRadius(radius)
+                .startAngle(angle - angleStep / 2.2)
+                .endAngle(angle + angleStep / 2.2);
+
+            svg.append("path")
+                .attr("d", petal)
+                .attr("fill", "none")
+                .attr("stroke", "#ff1a1a")
+                .attr("stroke-width", 1.5)
+                .attr("stroke-dasharray", (rot > 50) ? "2,2" : "none") // Wheel breaks if ROT is high
+                .style("opacity", 0.6);
+
+            const labelRadius = radius + 25;
+            svg.append("text")
+                .attr("x", Math.cos(angle - Math.PI/2) * labelRadius)
+                .attr("y", Math.sin(angle - Math.PI/2) * labelRadius)
+                .attr("text-anchor", "middle")
+                .attr("fill", "#ff1a1a")
+                .style("font-size", "10px")
+                .text(label.toUpperCase());
+        });
+        
+        // Target crosshair
+        svg.append("circle").attr("r", radius).attr("fill", "none").attr("stroke", "#400");
+    }
+
+    // Example Auto-Generation Call:
+    // This is where your bot/script would inject the character's data
+    generateCharacter("OPERATIVE_X", 75, 40, 85);
+
+</script>
+</body>
+</html>
