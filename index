@@ -1,197 +1,978 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MIL-OS: SYSTEM_DECAY_INTERFACE</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #0d0101; 
-            --crt-red: #ff1a1a; 
-            --dim-red: #440000;
-            --terminal-green: #33ff33; /* For status highlights */
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>INTV // SUBJECT FILE — The Initiative Character Sheet</title>
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--crt-red);
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
+<!-- ═══ Discord / Open Graph preview card ═══ -->
 
-        /* --- CRT OVERLAYS --- */
-        body::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
-                        repeating-linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            background-size: 100% 3px, 3px 100%;
-            z-index: 10;
-            pointer-events: none;
-        }
+<meta property="og:type"        content="website">
+<meta property="og:title"       content="PHANTOM_TERMINAL // SUBJECT FILE">
+<meta property="og:description" content="Create your Initiative OC — Plutchik emotion wheel, power index, faction relations, lore fields. Fill out and save your character sheet.">
+<meta property="og:image"       content="https://i.imgur.com/0000000.png">
+<!-- Replace the og:image URL above with your own preview image hosted on Imgur or Discord CDN -->
+<!-- Recommended size: 1200×630px. A screenshot of the sheet works perfectly. -->
 
-        /* --- MAIN DASHBOARD LAYOUT --- */
-        #container {
-            display: flex;
-            gap: 20px;
-            padding: 30px;
-            border: 2px solid var(--dim-red);
-            background: rgba(20, 0, 0, 0.8);
-            box-shadow: 0 0 40px #500;
-            position: relative;
-            animation: flicker 0.15s infinite;
-        }
+<!-- Twitter/X card (also used by some Discord clients) -->
 
-        /* --- STAT BARS SECTION --- */
-        #sidebar {
-            width: 200px;
-            border-left: 1px solid var(--dim-red);
-            padding-left: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="PHANTOM_TERMINAL // SUBJECT FILE">
+<meta name="twitter:description" content="Create your Initiative OC — emotion wheel, power index, faction relations and more.">
+<meta name="twitter:image"       content="https://i.imgur.com/0000000.png">
+<!-- Same image URL as og:image above -->
 
-        .stat-group { margin-bottom: 25px; }
-        .stat-label { font-size: 14px; letter-spacing: 2px; margin-bottom: 5px; display: block; }
-        
-        .progress-bg {
-            height: 12px;
-            background: #200;
-            border: 1px solid var(--dim-red);
-            position: relative;
-            overflow: hidden;
-        }
+<meta name="theme-color" content="#00ff3c">
+<!-- theme-color sets the colour of the embed border on Discord — change to match your server colour if you want -->
+<!-- ═══════════════════════════════════════════ -->
 
-        .progress-fill {
-            height: 100%;
-            background: var(--crt-red);
-            box-shadow: 0 0 10px var(--crt-red);
-            width: 0%; /* Animated via JS */
-            transition: width 1s ease-in-out;
-        }
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000300;--paper:#000d01;--paper-mid:#001005;
+  --border:#0a2e0e;--border-hi:#1a5e22;
+  --glow:#00ff3c;--glow-dim:#00a828;--glow-faint:#004410;--glow-trace:#001505;
+  --text:#00ff3c;--text-dim:#00a828;--text-faint:#005518;--text-body:#00dd34;
+  --danger:#ff2200;--danger-dim:#7a1000;
+  --amber:#ffaa00;--amber-dim:#7a5000;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);min-height:100vh;font-family:'Share Tech Mono',monospace;color:var(--text);overflow-x:hidden;padding-bottom:80px;-webkit-font-smoothing:none}
+body::before{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,60,.025) 2px,rgba(0,255,60,.025) 4px)}
+body::after{content:'';position:fixed;inset:0;z-index:9997;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65) 100%)}
+.noise{position:fixed;inset:0;z-index:9996;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")}
 
-        /* Unique styles for the 3 bars */
-        #bar-weird { background: linear-gradient(90deg, #f0f, #ff1a1a); }
-        #bar-rot { background: linear-gradient(90deg, #550, #220); border: 1px solid #770; }
-        #bar-grit { background: #666; filter: contrast(200%) grayscale(1); }
+/* SAVE BAR */
+#save-bar{position:fixed;bottom:0;left:0;right:0;z-index:8000;background:#000800;border-top:1px solid var(–border-hi);padding:8px 14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sbar-label{font-size:10px;letter-spacing:2px;color:var(–text-faint);flex-shrink:0}
+.sbar-btn{background:transparent;border:1px solid var(–border-hi);color:var(–text-dim);font-family:‘Share Tech Mono’,monospace;font-size:10px;letter-spacing:2px;padding:8px 12px;cursor:pointer;text-transform:uppercase;flex-shrink:0;-webkit-appearance:none;border-radius:0}
+.sbar-btn:active,.sbar-btn:hover{background:var(–glow-faint);color:var(–text)}
+.sbar-btn.hi{border-color:var(–glow-dim);color:var(–glow-dim)}
+#save-status{font-size:10px;letter-spacing:2px;color:var(–text-faint);margin-left:auto}
 
-        /* --- WHEEL SECTION --- */
-        h1 { font-size: 1rem; margin: 0 0 10px 0; border-bottom: 1px solid var(--crt-red); padding-bottom: 5px; }
+/* THEME DRAWER */
+#theme-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9000;align-items:flex-end;justify-content:center}
+#theme-overlay.open{display:flex}
+#theme-drawer{background:#000800;border-top:1px solid var(–border-hi);width:100%;max-width:560px;padding:20px;display:flex;flex-direction:column;gap:13px;max-height:88vh;overflow-y:auto}
+.dhead{display:flex;align-items:center;justify-content:space-between}
+.dtitle{font-size:13px;letter-spacing:4px;color:var(–text-dim);text-transform:uppercase}
+.dclose{background:transparent;border:1px solid var(–border-hi);color:var(–text-dim);font-family:‘Share Tech Mono’,monospace;font-size:13px;padding:8px 14px;cursor:pointer;-webkit-appearance:none;border-radius:0}
+.trow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tlabel{font-size:12px;letter-spacing:2px;color:var(–text-dim);text-transform:uppercase;flex:1}
+.trow input[type=color]{width:50px;height:38px;border:1px solid var(–border-hi);background:none;cursor:pointer;padding:2px;-webkit-appearance:none;border-radius:0}
+.tdiv{height:1px;background:var(–border-hi);opacity:.4}
+.tsub{font-size:11px;letter-spacing:3px;color:var(–text-faint);text-transform:uppercase}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pbtn{padding:13px 4px;font-family:‘Share Tech Mono’,monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;background:transparent;border:1px solid var(–border-hi);color:var(–text-dim);cursor:pointer;-webkit-appearance:none;border-radius:0}
+.pbtn:active,.pbtn:hover{background:var(–glow-faint);color:var(–text)}
 
-        @keyframes flicker {
-            0% { opacity: 0.98; }
-            50% { opacity: 1; }
-            100% { opacity: 0.97; }
-        }
+/* TERMINAL */
+.terminal{max-width:900px;margin:0 auto;border-left:1px solid var(–border-hi);border-right:1px solid var(–border-hi);position:relative}
+.boot-bar{background:#000500;border-bottom:1px solid var(–border-hi);padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.boot-title{font-family:‘VT323’,monospace;font-size:clamp(22px,5vw,34px);color:var(–text);letter-spacing:4px;text-shadow:0 0 12px var(–glow),0 0 30px rgba(0,255,60,.3)}
+.boot-sub{font-size:11px;letter-spacing:3px;color:var(–text-dim);text-transform:uppercase;margin-top:4px}
+.boot-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.boot-id{font-size:12px;letter-spacing:2px;color:var(–text-faint)}
+.tier-row{display:flex;align-items:center;gap:8px}
+.tier-label{font-size:11px;letter-spacing:2px;color:var(–text-faint)}
+.tier-dot{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;cursor:pointer;transition:all .2s;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.tier-dot[data-t=“1”]{color:var(–danger)}
+.tier-dot[data-t=“2”]{color:var(–amber)}
+.tier-dot[data-t=“3”]{color:var(–text-dim)}
+.tier-dot.on[data-t=“1”]{background:var(–danger);box-shadow:0 0 10px var(–danger)}
+.tier-dot.on[data-t=“2”]{background:var(–amber);box-shadow:0 0 10px var(–amber)}
+.tier-dot.on[data-t=“3”]{background:var(–text-dim)}
+.status-line{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:2px;color:var(–text-dim)}
+.blink-dot{width:7px;height:7px;border-radius:50%;background:var(–glow);animation:blk 1.8s infinite}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:.1}}
+.prompt-line{padding:8px 20px;font-size:12px;letter-spacing:2px;color:var(–text-faint);border-bottom:1px solid var(–border);background:var(–glow-trace)}
+.stamp{position:absolute;top:80px;right:16px;font-family:‘VT323’,monospace;font-size:22px;letter-spacing:5px;color:var(–danger);border:2px solid var(–danger);padding:4px 12px;transform:rotate(-9deg);pointer-events:none;opacity:0;transition:opacity .3s;z-index:5;text-shadow:0 0 8px var(–danger);text-transform:uppercase;user-select:none}
+.stamp.on{opacity:1}
 
-        .glitch-text { animation: textGlitch 2s infinite; }
-        @keyframes textGlitch {
-            0% { transform: translate(0); }
-            2% { transform: translate(-2px, 1px); color: #0f0; }
-            4% { transform: translate(2px, -1px); color: #f0f; }
-            6% { transform: translate(0); }
-        }
-    </style>
+/* HERO */
+.hero{display:flex;flex-direction:column;border-bottom:1px solid var(–border-hi)}
+.portrait-col{padding:20px;border-bottom:1px solid var(–border);display:flex;flex-direction:column;align-items:center;gap:12px}
+.portrait-frame{width:min(200px,60vw);aspect-ratio:3/4;border:1px solid var(–border-hi);background:#000500;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;box-shadow:0 0 20px rgba(0,255,60,.08);transition:box-shadow .2s}
+.portrait-frame:hover,.portrait-frame:active{box-shadow:0 0 30px rgba(0,255,60,.18)}
+.portrait-frame img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.portrait-hint{display:flex;flex-direction:column;align-items:center;gap:10px;z-index:1;pointer-events:none}
+.ph-icon{font-family:‘VT323’,monospace;font-size:32px;color:var(–text-faint);line-height:1}
+.ph-text{font-size:11px;letter-spacing:2px;color:var(–text-faint);text-align:center;text-transform:uppercase;line-height:2}
+.port-cap{font-size:11px;letter-spacing:2px;color:var(–text-faint);text-transform:uppercase}
+.gif-slot{width:min(200px,60vw);border:1px dashed var(–border-hi);background:#000300;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;min-height:70px;transition:border-color .2s}
+.gif-slot:hover,.gif-slot:active{border-color:var(–glow-dim)}
+.gif-slot img{width:100%;display:block}
+.gif-hint{font-size:11px;letter-spacing:2px;color:var(–text-faint);text-transform:uppercase;padding:14px;text-align:center}
+
+/* IDENTITY COL */
+.identity-col{padding:20px;display:flex;flex-direction:column;gap:20px;flex:1}
+
+/* WHEEL BLOCK */
+.wheel-block{display:flex;flex-direction:column;gap:12px}
+.wheel-tab-row{display:flex;gap:0}
+.wheel-tab{flex:1;padding:11px 6px;font-family:‘Share Tech Mono’,monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;background:transparent;border:1px solid var(–border-hi);color:var(–text-faint);cursor:pointer;transition:all .15s;-webkit-appearance:none;border-radius:0;text-align:center}
+.wheel-tab.active{background:var(–glow-faint);color:var(–text);border-color:var(–glow-dim)}
+.wheel-tab:first-child{border-right:none}
+.wheel-canvas-wrap{position:relative;width:100%;max-width:500px;margin:0 auto;padding:4px}
+.wheel-canvas-wrap svg{width:100%;height:auto;display:block}
+.wheel-controls{display:flex;flex-direction:column;gap:10px}
+.emo-row{display:grid;grid-template-columns:100px 1fr 26px;align-items:center;gap:8px}
+.emo-label{font-size:10px;letter-spacing:1px;color:var(–text-dim);text-transform:uppercase;line-height:1.3}
+.emo-slider{-webkit-appearance:none;appearance:none;width:100%;height:5px;background:var(–border-hi);outline:none;cursor:pointer;border-radius:0}
+.emo-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;cursor:pointer;border-radius:0}
+.emo-slider::-moz-range-thumb{width:16px;height:16px;cursor:pointer;border-radius:0;border:none}
+.emo-val{font-size:12px;color:var(–text-faint);text-align:right;font-family:‘Share Tech Mono’,monospace}
+
+/* SECTIONS */
+.section{border-bottom:1px solid var(–border)}
+.sec-head{display:flex;align-items:center;gap:12px;padding:15px 20px;cursor:pointer;user-select:none;background:var(–glow-trace);min-height:50px;-webkit-tap-highlight-color:transparent}
+.sec-head:hover,.sec-head:active{background:rgba(0,255,60,.04)}
+.sec-arrow{font-size:14px;color:var(–glow-dim);transition:transform .2s;flex-shrink:0}
+.sec-head.open .sec-arrow{transform:rotate(90deg)}
+.sec-title{font-family:‘VT323’,monospace;font-size:20px;letter-spacing:3px;color:var(–text);text-transform:uppercase;text-shadow:0 0 8px rgba(0,255,60,.4)}
+.sec-rule{flex:1;height:1px;background:var(–border)}
+.sec-body{padding:8px 20px 24px;display:flex;flex-direction:column;gap:18px}
+.sec-body.hidden{display:none}
+.sec-hint{font-size:13px;color:var(–text-faint);line-height:1.8;border-left:2px solid var(–border-hi);padding-left:12px;letter-spacing:1px}
+
+/* FIELDS */
+.fg{display:flex;flex-direction:column;gap:7px}
+.fl{font-size:11px;letter-spacing:3px;color:var(–text-dim);text-transform:uppercase;display:flex;flex-direction:column;gap:2px}
+.fl .note{font-size:10px;letter-spacing:1px;color:var(–text-faint);text-transform:none}
+.fi{background:transparent;border:none;border-bottom:1px solid var(–border-hi);color:var(–text-body);font-family:‘Share Tech Mono’,monospace;font-size:15px;line-height:1.5;padding:9px 4px;width:100%;outline:none;transition:border-color .2s;caret-color:var(–glow);-webkit-appearance:none;border-radius:0}
+.fi:focus{border-bottom-color:var(–glow-dim)}
+.fi::placeholder{color:var(–text-faint);font-size:12px;letter-spacing:1px}
+textarea.fi{resize:vertical;min-height:90px;border:1px solid var(–border-hi);padding:12px;font-size:14px;line-height:1.85;border-radius:0;scrollbar-width:thin;scrollbar-color:var(–border-hi) transparent}
+textarea.fi:focus{border-color:var(–glow-dim)}
+.g2{display:flex;flex-direction:column;gap:18px}
+.g3{display:flex;flex-direction:column;gap:18px}
+@media(min-width:520px){.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px}}
+@media(min-width:640px){
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 20px}
+.hero{flex-direction:row}
+.portrait-col{border-bottom:none;border-right:1px solid var(–border);width:220px;flex-shrink:0;align-items:flex-start}
+}
+
+/* POWER WRAP */
+.power-wrap{border:1px solid var(–danger-dim);background:rgba(255,34,0,.03);padding:18px;display:flex;flex-direction:column;gap:18px}
+.power-tag{font-family:‘VT323’,monospace;font-size:14px;letter-spacing:3px;color:var(–danger-dim);text-transform:uppercase}
+
+/* FACTIONS */
+.faction-list{display:flex;flex-direction:column;gap:14px}
+.faction-row{display:flex;align-items:center;gap:10px}
+.faction-name{font-size:11px;letter-spacing:1px;color:var(–text-dim);text-transform:uppercase;width:130px;flex-shrink:0;line-height:1.4}
+.faction-pips{display:flex;gap:4px}
+.pip{width:18px;height:18px;border:1px solid var(–border-hi);cursor:pointer;transition:all .1s;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.pip.on{background:var(–glow-dim);border-color:var(–glow-dim);box-shadow:0 0 4px var(–glow-dim)}
+.faction-val{font-size:12px;color:var(–text-faint);width:18px;text-align:right}
+@media(min-width:520px){.faction-list{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px}}
+
+/* AUDIO */
+.audio-wrap{border:1px solid var(–border-hi);background:#000800;padding:16px;display:flex;flex-direction:column;gap:12px}
+.yt-row{display:flex;gap:0}
+.yt-input{flex:1;min-width:0;background:#000300;border:1px solid var(–border-hi);border-right:none;color:var(–text-body);font-family:‘Share Tech Mono’,monospace;font-size:13px;padding:11px 12px;outline:none;-webkit-appearance:none;border-radius:0}
+.yt-input:focus{border-color:var(–glow-dim)}
+.yt-input::placeholder{color:var(–text-faint);font-size:11px}
+.yt-btn{background:transparent;border:1px solid var(–border-hi);color:var(–text-dim);font-family:‘Share Tech Mono’,monospace;font-size:11px;letter-spacing:2px;padding:11px 14px;cursor:pointer;text-transform:uppercase;-webkit-appearance:none;border-radius:0;flex-shrink:0}
+.yt-btn:active,.yt-btn:hover{background:var(–glow-faint);color:var(–text)}
+.yt-wrap{position:relative;width:0;height:0;overflow:hidden}
+.yt-wrap.loaded{width:100%;padding-bottom:56.25%;height:0}
+.yt-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.yt-ph{font-size:12px;letter-spacing:2px;color:var(–text-faint);text-transform:uppercase;padding:6px 0}
+.yt-hint{font-size:11px;color:var(–text-faint);letter-spacing:1px;line-height:1.8}
+
+/* FOOTER */
+.term-footer{background:#000500;border-top:1px solid var(–border-hi);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.foot-code{font-size:11px;letter-spacing:2px;color:var(–text-faint);line-height:1.8}
+.foot-warn{color:var(–danger-dim)}
+.act-btns{display:flex;gap:8px;flex-wrap:wrap}
+.act-btn{background:transparent;border:1px solid var(–border-hi);color:var(–text-dim);font-family:‘Share Tech Mono’,monospace;font-size:11px;letter-spacing:2px;padding:11px 16px;cursor:pointer;text-transform:uppercase;-webkit-appearance:none;border-radius:0}
+.act-btn:active,.act-btn:hover{background:var(–glow-faint);color:var(–text)}
+.act-btn.red{border-color:var(–danger-dim);color:var(–danger)}
+.act-btn.red:active{background:var(–danger-dim)}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(–border-hi)}
+@media print{body{background:#000!important}#save-bar,#theme-overlay,.act-btns{display:none!important}.blink-dot{animation:none}}
+</style>
+
 </head>
 <body>
+<div class="noise"></div>
 
-<div id="container">
-    <div>
-        <h1 class="glitch-text">PERSONNEL_ID: <span id="user-name">GENERIC_UNIT</span></h1>
-        <div id="wheel-container"></div>
+<div id="save-bar">
+  <span class="sbar-label">&gt; SAVE_</span>
+  <button class="sbar-btn hi" onclick="saveHTML()">[&#8595; HTML]</button>
+  <button class="sbar-btn hi" onclick="copyLink()">[&#8856; LINK]</button>
+  <button class="sbar-btn" onclick="openTheme()">[&#9632; THEME]</button>
+  <span id="save-status"></span>
+</div>
+
+<div id="theme-overlay" onclick="closeIfOutside(event)">
+  <div id="theme-drawer">
+    <div class="dhead"><span class="dtitle">&gt; THEME SETTINGS_</span><button class="dclose" onclick="closeTheme()">[CLOSE]</button></div>
+    <div class="trow"><span class="tlabel">&gt; Background</span><input type="color" value="#000300" oninput="setVar('--bg',this.value);document.body.style.background=this.value;renderWheel&&renderWheel()"></div>
+    <div class="trow"><span class="tlabel">&gt; Paper</span><input type="color" value="#000d01" oninput="setVar('--paper',this.value)"></div>
+    <div class="trow"><span class="tlabel">&gt; Glow / Text</span><input type="color" value="#00ff3c" oninput="setGlow(this.value)"></div>
+    <div class="trow"><span class="tlabel">&gt; Danger</span><input type="color" value="#ff2200" oninput="setDanger(this.value)"></div>
+    <div class="trow"><span class="tlabel">&gt; Amber / Tier 2</span><input type="color" value="#ffaa00" oninput="setVar('--amber',this.value)"></div>
+    <div class="trow"><span class="tlabel">&gt; Borders</span><input type="color" value="#1a5e22" oninput="setVar('--border-hi',this.value);setVar('--border',darken(this.value,.5));renderWheel&&renderWheel()"></div>
+    <div class="tdiv"></div>
+    <div class="tsub">&gt; QUICK PRESETS_</div>
+    <div class="pgrid">
+      <button class="pbtn" onclick="applyPreset('rot')">ROT</button>
+      <button class="pbtn" onclick="applyPreset('amber')">AMBER</button>
+      <button class="pbtn" onclick="applyPreset('void')">VOID</button>
+      <button class="pbtn" onclick="applyPreset('blood')">BLOOD</button>
+      <button class="pbtn" onclick="applyPreset('ice')">ICE</button>
+      <button class="pbtn" onclick="applyPreset('paper')">PAPER</button>
+    </div>
+  </div>
+</div>
+
+<div class="terminal" id="terminal">
+<div class="stamp" id="stamp">CLASSIFIED</div>
+
+<div class="boot-bar">
+  <div><div class="boot-title">PHANTOM_TERMINAL</div><div class="boot-sub">&gt; INTV // SUBJECT FILE // RESTRICTED ACCESS_</div></div>
+  <div class="boot-right">
+    <div class="boot-id" id="boot-id">FILE: INTV-████-████</div>
+    <div class="tier-row"><span class="tier-label">TIER</span><div class="tier-dot" data-t="1" onclick="setTier(1)"></div><div class="tier-dot" data-t="2" onclick="setTier(2)"></div><div class="tier-dot" data-t="3" onclick="setTier(3)"></div></div>
+    <div class="status-line"><div class="blink-dot"></div><span id="tier-text">STATUS: UNCLASSIFIED</span></div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; LOADING SUBJECT DATA... OK // SESSION: <span id="sess-id">████████</span></div>
+
+<div class="hero">
+  <div class="portrait-col">
+    <label for="portrait-file" class="portrait-frame"><div class="portrait-hint" id="portrait-hint"><div class="ph-icon">[?]</div><div class="ph-text">FACE CLAIM<br>/ ARTWORK<br>TAP TO UPLOAD</div></div><img id="portrait-img" src="" alt="" style="display:none"></label>
+    <input type="file" id="portrait-file" accept="image/*" style="display:none">
+    <div class="port-cap">&gt; tap to change_</div>
+    <label for="gif-file" class="gif-slot" style="width:min(200px,60vw)"><div class="gif-hint" id="gif-hint">&gt; ADD GIF_</div><img id="gif-img" src="" alt="" style="display:none"></label>
+    <input type="file" id="gif-file" accept="image/gif,image/*" style="display:none">
+    <div class="port-cap">&gt; tap to change gif_</div>
+  </div>
+
+  <div class="identity-col">
+    <div class="wheel-block">
+      <div style="font-size:11px;letter-spacing:3px;color:var(--text-dim)">&gt; EMOTION / POWER INDEX_</div>
+      <div class="wheel-tab-row" style="flex-wrap:wrap">
+        <button class="wheel-tab active" id="tab-emotion" onclick="switchWheel('emotion')" style="flex:1 1 40%;border-right:none;border-bottom:none">[ PLUTCHIK WHEEL ]</button>
+        <button class="wheel-tab" id="tab-power" onclick="switchWheel('power')" style="flex:1 1 40%;border-bottom:none">[ POWER FLOWER ]</button>
+        <button class="wheel-tab" id="tab-dyad-e" onclick="switchWheel('dyad-e')" style="flex:1 1 40%;border-right:none">[ EMOTION DYADS ]</button>
+        <button class="wheel-tab" id="tab-dyad-p" onclick="switchWheel('dyad-p')" style="flex:1 1 40%">[ POWER DYADS ]</button>
+      </div>
+      <div class="wheel-canvas-wrap"><svg id="wheel-svg" viewBox="-130 -130 260 260" style="overflow:visible" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="wheel-controls" id="wheel-controls"></div>
     </div>
 
-    <div id="sidebar">
-        <div class="stat-group">
-            <span class="stat-label">WEIRD_INDEX</span>
-            <div class="progress-bg"><div id="bar-weird" class="progress-fill"></div></div>
-        </div>
-        <div class="stat-group">
-            <span class="stat-label">GRIT_STAMINA</span>
-            <div class="progress-bg"><div id="bar-grit" class="progress-fill"></div></div>
-        </div>
-        <div class="stat-group">
-            <span class="stat-label">ROT_DECAY</span>
-            <div class="progress-bg"><div id="bar-rot" class="progress-fill"></div></div>
-        </div>
-        <div style="font-size: 10px; color: #500; margin-top: 20px;">
-            > SCANNING BIOMETRICS...<br>
-            > DECAY DETECTED IN SECTOR 7<br>
-            > NOISE RATIO: 0.82
-        </div>
+```
+<div class="g2">
+  <div class="fg"><div class="fl">&gt; NAME</div><input class="fi" data-key="name" type="text" placeholder="— — —"></div>
+  <div class="fg"><div class="fl">&gt; KNOWN AS</div><input class="fi" data-key="known_as" type="text" placeholder="— — —"></div>
+  <div class="fg"><div class="fl">&gt; NICKNAMES</div><input class="fi" data-key="nicknames" type="text" placeholder="— — —"></div>
+  <div class="fg"><div class="fl">&gt; AFFILIATION(S)</div><input class="fi" data-key="affiliation" type="text" placeholder="— — —"></div>
+  <div class="fg"><div class="fl">&gt; AGE</div><input class="fi" data-key="age" type="text" placeholder="—"></div>
+  <div class="fg"><div class="fl">&gt; GENDER</div><input class="fi" data-key="gender" type="text" placeholder="—"></div>
+</div>
+<div class="fg"><div class="fl">&gt; ORIENTATION <span class="note">// optional</span></div><input class="fi" data-key="orientation" type="text" placeholder="—"></div>
+```
+
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 01 — PHYSICAL RECORD_</div>
+<div class="section" id="s-physical">
+  <div class="sec-head open" onclick="toggleSec('s-physical')"><span class="sec-arrow">▶</span><span class="sec-title">01 // PHYSICAL_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="g3"><div class="fg"><div class="fl">&gt; BUILD / HEIGHT</div><input class="fi" data-key="build" type="text" placeholder="—"></div><div class="fg"><div class="fl">&gt; HAIR</div><input class="fi" data-key="hair" type="text" placeholder="—"></div><div class="fg"><div class="fl">&gt; EYES</div><input class="fi" data-key="eyes" type="text" placeholder="—"></div></div>
+    <div class="fg"><div class="fl">&gt; DISTINCTIVE FEATURES <span class="note">// scars · tattoos · etc.</span></div><input class="fi" data-key="features" type="text" placeholder="—"></div>
+    <div class="g2"><div class="fg"><div class="fl">&gt; TYPICAL OUTFIT</div><input class="fi" data-key="outfit" type="text" placeholder="—"></div><div class="fg"><div class="fl">&gt; SIGNATURE ITEM</div><input class="fi" data-key="sig_item" type="text" placeholder="—"></div></div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 02 — SERUM CLASSIFICATION_</div>
+<div class="section" id="s-power">
+  <div class="sec-head open" onclick="toggleSec('s-power')"><span class="sec-arrow">▶</span><span class="sec-title">02 // THE POWER_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="power-wrap">
+      <div class="power-tag">[INTV SERUM — EXPRESSION DATA]</div>
+      <div class="g2"><div class="fg"><div class="fl">&gt; POWER NAME</div><input class="fi" data-key="power_name" type="text" placeholder="— — —"></div><div class="fg"><div class="fl">&gt; CLASSIFICATION</div><input class="fi" data-key="power_class" type="text" placeholder="e.g. Tier 1 — The Changed"></div></div>
+      <div class="fg"><div class="fl">&gt; HOW IT WORKS <span class="note">// 1–2 sentences</span></div><textarea class="fi" data-key="power_how" placeholder="Be precise."></textarea></div>
+      <div class="g2"><div class="fg"><div class="fl">&gt; PRIMARY USES</div><textarea class="fi" data-key="power_primary" placeholder="—"></textarea></div><div class="fg"><div class="fl">&gt; SECONDARY CAPABILITIES</div><textarea class="fi" data-key="power_secondary" placeholder="—"></textarea></div></div>
+      <div class="fg"><div class="fl">&gt; LIMITATIONS &amp; COSTS</div><textarea class="fi" data-key="power_limits" placeholder="—"></textarea></div>
+      <div class="g2"><div class="fg"><div class="fl">&gt; IF UNDERUSED</div><textarea class="fi" data-key="power_under" placeholder="—"></textarea></div><div class="fg"><div class="fl">&gt; IF OVERUSED</div><textarea class="fi" data-key="power_over" placeholder="—"></textarea></div></div>
+      <div class="fg"><div class="fl">&gt; VISUAL / SENSORY EFFECTS</div><textarea class="fi" data-key="power_fx" placeholder="—"></textarea></div>
     </div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 03 — ORIGIN FILE_</div>
+<div class="section" id="s-backstory">
+  <div class="sec-head open" onclick="toggleSec('s-backstory')"><span class="sec-arrow">▶</span><span class="sec-title">03 // BACKSTORY_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="fg"><div class="fl">&gt; ORIGIN <span class="note">// where were you before?</span></div><textarea class="fi" data-key="origin" style="min-height:100px" placeholder="—"></textarea></div>
+    <div class="fg"><div class="fl">&gt; THE MOMENT EVERYTHING CHANGED</div><textarea class="fi" data-key="changed" style="min-height:120px" placeholder="How did you get your power? When did the wasteland claim you?"></textarea></div>
+    <div class="fg"><div class="fl">&gt; KEY PEOPLE FROM THE PAST <span class="note">// names · relationships · alive or dead?</span></div><textarea class="fi" data-key="key_people" style="min-height:100px" placeholder="—"></textarea></div>
+    <div class="g2"><div class="fg"><div class="fl">&gt; WHAT YOU LOST</div><textarea class="fi" data-key="lost" placeholder="—"></textarea></div><div class="fg"><div class="fl">&gt; WHAT YOU KEPT</div><textarea class="fi" data-key="kept" placeholder="—"></textarea></div></div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 04 — PSYCHOLOGICAL PROFILE_</div>
+<div class="section" id="s-personality">
+  <div class="sec-head open" onclick="toggleSec('s-personality')"><span class="sec-arrow">▶</span><span class="sec-title">04 // PERSONALITY_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="fg"><div class="fl">&gt; GENERAL PROFILE <span class="note">// write freely — no limit</span></div><textarea class="fi" data-key="personality" style="min-height:140px" placeholder="Write whatever you want here. As much as you need."></textarea></div>
+    <div class="g2">
+      <div class="fg"><div class="fl">&gt; DEFAULT MOOD</div><input class="fi" data-key="mood" type="text" placeholder="—"></div>
+      <div class="fg"><div class="fl">&gt; SENSE OF HUMOR</div><input class="fi" data-key="humor" type="text" placeholder="—"></div>
+      <div class="fg"><div class="fl">&gt; WITH STRANGERS</div><input class="fi" data-key="strangers" type="text" placeholder="—"></div>
+      <div class="fg"><div class="fl">&gt; WITH FRIENDS</div><input class="fi" data-key="friends" type="text" placeholder="—"></div>
+      <div class="fg"><div class="fl">&gt; BIGGEST PET PEEVE</div><input class="fi" data-key="peeve" type="text" placeholder="—"></div>
+      <div class="fg"><div class="fl">&gt; FAVORITE WASTELAND PASTIME</div><input class="fi" data-key="pastime" type="text" placeholder="—"></div>
+    </div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 05 — BEHAVIORAL ANOMALIES_</div>
+<div class="section" id="s-quirks">
+  <div class="sec-head open" onclick="toggleSec('s-quirks')"><span class="sec-arrow">▶</span><span class="sec-title">05 // QUIRKS_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="fg"><div class="fl">&gt; UNUSUAL SKILL <span class="note">// unrelated to survival</span></div><input class="fi" data-key="skill" type="text" placeholder="juggling · poetry · card tricks…"></div>
+    <div class="g2"><div class="fg"><div class="fl">&gt; WHEN NERVOUS</div><input class="fi" data-key="nervous" type="text" placeholder="—"></div><div class="fg"><div class="fl">&gt; WHEN ANGRY</div><input class="fi" data-key="angry" type="text" placeholder="—"></div></div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 06 — COMBAT ASSESSMENT_</div>
+<div class="section" id="s-combat">
+  <div class="sec-head open" onclick="toggleSec('s-combat')"><span class="sec-arrow">▶</span><span class="sec-title">06 // COMBAT &amp; SURVIVAL_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="g3"><div class="fg"><div class="fl">&gt; PRIMARY WEAPON</div><input class="fi" data-key="weapon" type="text" placeholder="—"></div><div class="fg"><div class="fl">&gt; FIGHTING STYLE</div><input class="fi" data-key="fight_style" type="text" placeholder="brawler · sniper…"></div><div class="fg"><div class="fl">&gt; SURVIVAL SPECIALTY</div><input class="fi" data-key="survival" type="text" placeholder="scavenging…"></div></div>
+    <div class="g2"><div class="fg"><div class="fl">&gt; GO-TO MOVE</div><input class="fi" data-key="goto_move" type="text" placeholder="—"></div><div class="fg"><div class="fl">&gt; BIGGEST WEAKNESS</div><input class="fi" data-key="weakness" type="text" placeholder="—"></div></div>
+    <div class="fg"><div class="fl">&gt; ALWAYS IN INVENTORY</div><textarea class="fi" data-key="inventory" placeholder="—"></textarea></div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 07 — SOCIAL NETWORK_</div>
+<div class="section" id="s-rel">
+  <div class="sec-head open" onclick="toggleSec('s-rel')"><span class="sec-arrow">▶</span><span class="sec-title">07 // RELATIONSHIPS_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="fg"><div class="fl">&gt; CURRENT ALLIES</div><textarea class="fi" data-key="allies" placeholder="—"></textarea></div>
+    <div class="fg"><div class="fl">&gt; RIVALS / ENEMIES</div><textarea class="fi" data-key="rivals" placeholder="—"></textarea></div>
+    <div class="fg"><div class="fl">&gt; REPUTATION <span class="note">// what do others say?</span></div><textarea class="fi" data-key="reputation" placeholder="—"></textarea></div>
+    <div class="g2"><div class="fg"><div class="fl">&gt; WOULD CROSS THE WASTELAND FOR</div><input class="fi" data-key="cross_for" type="text" placeholder="—"></div><div class="fg"><div class="fl">&gt; WOULD KILL WITHOUT HESITATION</div><input class="fi" data-key="kill" type="text" placeholder="—"></div></div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 08 — VULNERABILITY REPORT_</div>
+<div class="section" id="s-fears">
+  <div class="sec-head open" onclick="toggleSec('s-fears')"><span class="sec-arrow">▶</span><span class="sec-title">08 // FEARS &amp; VULNERABILITIES_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="g2">
+      <div class="fg"><div class="fl">&gt; GREATEST FEAR</div><input class="fi" data-key="fear" type="text" placeholder="—"></div>
+      <div class="fg"><div class="fl">&gt; WHAT MAKES THEM FLINCH</div><input class="fi" data-key="flinch" type="text" placeholder="—"></div>
+      <div class="fg"><div class="fl">&gt; EMOTIONAL WEAKNESS</div><input class="fi" data-key="emo_weak" type="text" placeholder="guilt · loneliness…"></div>
+      <div class="fg"><div class="fl">&gt; PHYSICAL WEAKNESS</div><input class="fi" data-key="phys_weak" type="text" placeholder="injury · illness…"></div>
+    </div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 09 — REDACTED DATA_</div>
+<div class="section" id="s-secrets">
+  <div class="sec-head open" onclick="toggleSec('s-secrets')"><span class="sec-arrow">▶</span><span class="sec-title">09 // [REDACTED]_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="g2">
+      <div class="fg"><div class="fl">&gt; SOMETHING NO ONE KNOWS</div><textarea class="fi" data-key="secret1" placeholder="About their past —"></textarea></div>
+      <div class="fg"><div class="fl">&gt; A LIE THEY TELL EVERYONE</div><textarea class="fi" data-key="secret2" placeholder="—"></textarea></div>
+      <div class="fg"><div class="fl">&gt; SOMETHING THEY'RE ASHAMED OF</div><textarea class="fi" data-key="secret3" placeholder="—"></textarea></div>
+      <div class="fg"><div class="fl">&gt; HIDDEN GOAL / DESIRE</div><textarea class="fi" data-key="secret4" placeholder="—"></textarea></div>
+    </div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 10 — FACTION ALLEGIANCE DATA_</div>
+<div class="section" id="s-factions">
+  <div class="sec-head open" onclick="toggleSec('s-factions')"><span class="sec-arrow">▶</span><span class="sec-title">10 // FACTION RELATIONS_</span><div class="sec-rule"></div></div>
+  <div class="sec-body"><div class="sec-hint">&gt; 1 = HOSTILE · 10 = DEVOTED // tap squares to rate_</div><div class="faction-list" id="faction-grid"></div></div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 11 — NARRATIVE HOOKS_</div>
+<div class="section" id="s-plot">
+  <div class="sec-head open" onclick="toggleSec('s-plot')"><span class="sec-arrow">▶</span><span class="sec-title">11 // PLOT HOOKS_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="sec-hint">&gt; For the GM or writer. Or write your own._</div>
+    <div class="fg"><div class="fl">&gt; UNFINISHED BUSINESS</div><textarea class="fi" data-key="plot1" placeholder="—"></textarea></div>
+    <div class="fg"><div class="fl">&gt; SOMEONE FROM THE PAST RETURNS</div><textarea class="fi" data-key="plot2" placeholder="—"></textarea></div>
+    <div class="fg"><div class="fl">&gt; THE POWER GOES HAYWIRE</div><textarea class="fi" data-key="plot3" placeholder="—"></textarea></div>
+    <div class="fg"><div class="fl">&gt; A MORAL DILEMMA THEY'D FACE</div><textarea class="fi" data-key="plot4" placeholder="—"></textarea></div>
+    <div class="fg"><div class="fl">&gt; THEIR PERFECT ENDING</div><textarea class="fi" data-key="plot5" placeholder="—"></textarea></div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 12 — AUDIO / MEDIA_</div>
+<div class="section" id="s-media">
+  <div class="sec-head open" onclick="toggleSec('s-media')"><span class="sec-arrow">▶</span><span class="sec-title">12 // MEDIA_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="fg">
+      <div class="fl">&gt; CHARACTER THEME <span class="note">// YouTube audio</span></div>
+      <div class="audio-wrap">
+        <div class="yt-row"><input class="yt-input" id="yt-url" type="url" placeholder="Paste YouTube URL…"><button class="yt-btn" onclick="loadYT()">LOAD</button><button class="yt-btn" onclick="clearYT()" style="border-left:none">✕</button></div>
+        <div class="yt-hint">&gt; Paste any YouTube link to embed the player._</div>
+        <div class="yt-ph" id="yt-ph">&gt; NO TRACK LOADED_</div>
+        <div class="yt-wrap" id="yt-wrap"></div>
+      </div>
+    </div>
+    <div class="fg">
+      <div class="fl">&gt; EXTRA GIFs <span class="note">// up to 3</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">
+        <label class="gif-slot" style="width:min(140px,42vw)" for="eg1"><div class="gif-hint" id="eg1h">&gt; GIF_</div><img id="eg1i" src="" alt="" style="display:none"></label>
+        <input type="file" id="eg1" accept="image/gif,image/*" style="display:none">
+        <label class="gif-slot" style="width:min(140px,42vw)" for="eg2"><div class="gif-hint" id="eg2h">&gt; GIF_</div><img id="eg2i" src="" alt="" style="display:none"></label>
+        <input type="file" id="eg2" accept="image/gif,image/*" style="display:none">
+        <label class="gif-slot" style="width:min(140px,42vw)" for="eg3"><div class="gif-hint" id="eg3h">&gt; GIF_</div><img id="eg3i" src="" alt="" style="display:none"></label>
+        <input type="file" id="eg3" accept="image/gif,image/*" style="display:none">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="prompt-line">&gt; SECTION 13 — METADATA_</div>
+<div class="section" style="border-bottom:none" id="s-meta">
+  <div class="sec-head open" onclick="toggleSec('s-meta')"><span class="sec-arrow">▶</span><span class="sec-title">13 // CREATED BY_</span><div class="sec-rule"></div></div>
+  <div class="sec-body">
+    <div class="fg"><div class="fl">&gt; AUTHOR / PLAYER NAME</div><input class="fi" data-key="author" type="text" placeholder="—"></div>
+    <div class="fg"><div class="fl">&gt; NOTES / CREDITS</div><textarea class="fi" data-key="notes" placeholder="—"></textarea></div>
+  </div>
+</div>
+
+<div class="term-footer">
+  <div>
+    <div class="foot-code">&gt; INTV // SUBJECT PROFILE // RESTRICTED ACCESS_</div>
+    <div class="foot-code foot-warn">&gt; STATUS: UNRECOVERED // LAST UPDATED: 2015 (IN-WORLD)_</div>
+    <div class="foot-code" style="margin-top:4px;color:var(--text-faint)">&gt; v5.2_STABLE // PHANTOM_TERMINAL // [FILE CORRUPTED]_</div>
+  </div>
+  <div class="act-btns"><button class="act-btn red" onclick="toggleStamp()">[STAMP]</button><button class="act-btn" onclick="window.print()">[PRINT]</button></div>
+</div>
 </div>
 
 <script>
-    // Configuration
-    const width = 400;
-    const height = 400;
-    const radius = 160;
+/* ══════════════════════════════════════
+   WHEEL ENGINE — full Plutchik + dyads
+   + Power Flower + theme-reactive colors
+══════════════════════════════════════ */
 
-    const emotions = ["Joy", "Trust", "Fear", "Surprise", "Sadness", "Disgust", "Anger", "Anticipation"];
+/*
+  Layout (clockwise from top, matching classic Plutchik):
+  0  JOY          (top)
+  1  TRUST
+  2  FEAR
+  3  SURPRISE
+  4  SADNESS      (bottom)
+  5  DISGUST
+  6  ANGER
+  7  ANTICIPATION
 
-    const svg = d3.select("#wheel-container")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height)
-        .append("g")
-        .attr("transform", `translate(${width / 2},${height / 2})`);
+  Dyads sit between petals at petal_mid + 22.5 deg:
+  JOY+TRUST      = LOVE
+  TRUST+FEAR     = SUBMISSION
+  FEAR+SURPRISE  = AWE
+  SURPRISE+SAD   = DISAPPROVAL
+  SAD+DISGUST    = REMORSE
+  DISGUST+ANGER  = CONTEMPT
+  ANGER+ANTICI   = AGGRESSIVENESS
+  ANTICI+JOY     = OPTIMISM
+*/
 
-    function generateCharacter(name, weird, grit, rot) {
-        document.getElementById('user-name').innerText = name;
-        
-        // Update Bars
-        document.getElementById('bar-weird').style.width = weird + "%";
-        document.getElementById('bar-grit').style.width = grit + "%";
-        document.getElementById('bar-rot').style.width = rot + "%";
+/* hue values match real Plutchik wheel pigments */
+const EW=[
+  {id:'joy',        label:'JOY',          r1:'SERENITY',   r2:'JOY',          r3:'ECSTASY',    hue:55,  sat:98},
+  {id:'trust',      label:'TRUST',        r1:'ACCEPTANCE', r2:'TRUST',        r3:'ADMIRATION', hue:105, sat:65},
+  {id:'fear',       label:'FEAR',         r1:'APPREHENSION',r2:'FEAR',        r3:'TERROR',     hue:148, sat:60},
+  {id:'surprise',   label:'SURPRISE',     r1:'DISTRACTION',r2:'SURPRISE',     r3:'AMAZEMENT',  hue:188, sat:70},
+  {id:'sadness',    label:'SADNESS',      r1:'PENSIVENESS',r2:'SADNESS',      r3:'GRIEF',      hue:222, sat:72},
+  {id:'disgust',    label:'DISGUST',      r1:'BOREDOM',    r2:'DISGUST',      r3:'LOATHING',   hue:272, sat:58},
+  {id:'anger',      label:'ANGER',        r1:'ANNOYANCE',  r2:'ANGER',        r3:'RAGE',       hue:8,   sat:92},
+  {id:'anticipation',label:'ANTICIPATION',r1:'INTEREST',   r2:'ANTICIPATION', r3:'VIGILANCE',  hue:36,  sat:96},
+];
 
-        // Draw Wheel
-        svg.selectAll("*").remove();
-        const angleStep = (Math.PI * 2) / emotions.length;
+/* Dyads: between petal[a] and petal[b], label, hue = avg of both */
+const DYADS=[
+  {a:0,b:1, label:'LOVE',           r1:'FONDNESS',    r2:'LOVE',          r3:'DEVOTION',    hue:80,  sat:80},
+  {a:1,b:2, label:'SUBMISSION',     r1:'COMPLIANCE',  r2:'SUBMISSION',    r3:'SURRENDER',   hue:128, sat:55},
+  {a:2,b:3, label:'AWE',            r1:'WONDER',      r2:'AWE',           r3:'REVERENCE',   hue:168, sat:55},
+  {a:3,b:4, label:'DISAPPROVAL',    r1:'DOUBT',       r2:'DISAPPROVAL',   r3:'REJECTION',   hue:205, sat:65},
+  {a:4,b:5, label:'REMORSE',        r1:'REGRET',      r2:'REMORSE',       r3:'GUILT',       hue:247, sat:60},
+  {a:5,b:6, label:'CONTEMPT',       r1:'DISDAIN',     r2:'CONTEMPT',      r3:'SCORN',       hue:300, sat:50},
+  {a:6,b:7, label:'AGGRESSIVENESS', r1:'BOLDNESS',    r2:'AGGRESSIVENESS',r3:'HOSTILITY',   hue:22,  sat:88},
+  {a:7,b:0, label:'OPTIMISM',       r1:'HOPE',        r2:'OPTIMISM',      r3:'EUPHORIA',    hue:46,  sat:96},
+];
 
-        emotions.forEach((label, i) => {
-            const angle = i * angleStep;
-            const petal = d3.arc()
-                .innerRadius(0)
-                .outerRadius(radius)
-                .startAngle(angle - angleStep / 2.2)
-                .endAngle(angle + angleStep / 2.2);
+const PW=[
+  {id:'offence',    label:'OFFENCE',     r1:'MINOR',     r2:'MODERATE',   r3:'LETHAL',     hue:8,   sat:90},
+  {id:'defence',    label:'DEFENCE',     r1:'PASSIVE',   r2:'ACTIVE',     r3:'FORTRESS',   hue:200, sat:68},
+  {id:'control',    label:'CONTROL',     r1:'NUDGE',     r2:'INFLUENCE',  r3:'DOMINATE',   hue:272, sat:62},
+  {id:'speed',      label:'SPEED',       r1:'FAST',      r2:'BLUR',       r3:'INSTANT',    hue:50,  sat:95},
+  {id:'perception', label:'PERCEPTION',  r1:'KEEN',      r2:'ACUTE',      r3:'OMNISCIENT', hue:170, sat:58},
+  {id:'endurance',  label:'ENDURANCE',   r1:'RESILIENT', r2:'TOUGH',      r3:'IMMORTAL',   hue:118, sat:62},
+  {id:'utility',    label:'UTILITY',     r1:'MINOR',     r2:'VERSATILE',  r3:'ABSOLUTE',   hue:34,  sat:78},
+  {id:'corruption', label:'CORRUPTION',  r1:'TAINTED',   r2:'WARPED',     r3:'CONSUMED',   hue:300, sat:55},
+];
 
-            svg.append("path")
-                .attr("d", petal)
-                .attr("fill", "none")
-                .attr("stroke", "#ff1a1a")
-                .attr("stroke-width", 1.5)
-                .attr("stroke-dasharray", (rot > 50) ? "2,2" : "none") // Wheel breaks if ROT is high
-                .style("opacity", 0.6);
+/* Power dyads */
+const PDYADS=[
+  {a:0,b:1, label:'SIEGE',      r1:'PRESSURE',   r2:'SIEGE',       r3:'DEVASTATION', hue:20,  sat:75},
+  {a:1,b:2, label:'SHIELD',     r1:'GUARD',      r2:'SHIELD',      r3:'BULWARK',     hue:236, sat:62},
+  {a:2,b:3, label:'BLINK',      r1:'DASH',       r2:'BLINK',       r3:'PHASE',       hue:160, sat:70},
+  {a:3,b:4, label:'REFLEX',     r1:'INSTINCT',   r2:'REFLEX',      r3:'PRECOGNITION',hue:110, sat:76},
+  {a:4,b:5, label:'RESILIENCE', r1:'RECOVERY',   r2:'RESILIENCE',  r3:'INVINCIBLE',  hue:144, sat:60},
+  {a:5,b:6, label:'FORTIFY',    r1:'REINFORCE',  r2:'FORTIFY',     r3:'IMPENETRABLE',hue:76,  sat:68},
+  {a:6,b:7, label:'ENTROPY',    r1:'DECAY',      r2:'ENTROPY',     r3:'ANNIHILATION',hue:320, sat:60},
+  {a:7,b:0, label:'BLITZ',      r1:'SURGE',      r2:'BLITZ',       r3:'ONSLAUGHT',   hue:22,  sat:90},
+];
 
-            const labelRadius = radius + 25;
-            svg.append("text")
-                .attr("x", Math.cos(angle - Math.PI/2) * labelRadius)
-                .attr("y", Math.sin(angle - Math.PI/2) * labelRadius)
-                .attr("text-anchor", "middle")
-                .attr("fill", "#ff1a1a")
-                .style("font-size", "10px")
-                .text(label.toUpperCase());
-        });
-        
-        // Target crosshair
-        svg.append("circle").attr("r", radius).attr("fill", "none").attr("stroke", "#400");
+let currentMode='emotion'; /* 'emotion' | 'power' | 'dyad' */
+let emotionVals =[5,5,5,5,5,5,5,5];
+let powerVals   =[5,5,5,5,5,5,5,5];
+let dyadEmoVals =[5,5,5,5,5,5,5,5]; /* intensity for emotion dyad wheel */
+let dyadPowVals =[5,5,5,5,5,5,5,5]; /* intensity for power dyad wheel */
+/* dyad active arrays (shown on parent wheels) — all on by default */
+let emotionDyads=[1,1,1,1,1,1,1,1];
+let powerDyads  =[1,1,1,1,1,1,1,1];
+
+function getVals(){
+  if(currentMode==='emotion') return emotionVals;
+  if(currentMode==='power')   return powerVals;
+  if(currentMode==='dyad-e')  return dyadEmoVals;
+  return dyadPowVals;
+}
+function getData(){
+  if(currentMode==='emotion') return EW;
+  if(currentMode==='power')   return PW;
+  if(currentMode==='dyad-e')  return DYADS;
+  return PDYADS;
+}
+function getDyads(){
+  /* only emotion/power modes show dyad overlays on the wheel */
+  if(currentMode==='emotion') return DYADS;
+  if(currentMode==='power')   return PDYADS;
+  return []; /* dyad wheel has no further sub-dyads */
+}
+function getDyadActive(){
+  return currentMode==='emotion'?emotionDyads:powerDyads;
+}
+function isDyadWheel(){return currentMode==='dyad-e'||currentMode==='dyad-p';}
+
+/* ── Math helpers ── */
+function pxy(deg,r){const a=(deg-90)*Math.PI/180;return[r*Math.cos(a),r*Math.sin(a)]}
+function f(n){return n.toFixed(2)}
+
+function arc(r1,r2,aStart,aEnd,gap=0.9){
+  const a=aStart+gap, b=aEnd-gap;
+  const lg=(b-a>=180)?1:0;
+  const[x1,y1]=pxy(a,r1);const[x2,y2]=pxy(b,r1);
+  const[x3,y3]=pxy(b,r2);const[x4,y4]=pxy(a,r2);
+  return`M${f(x1)},${f(y1)} A${r1},${r1} 0 ${lg},1 ${f(x2)},${f(y2)} L${f(x3)},${f(y3)} A${r2},${r2} 0 ${lg},0 ${f(x4)},${f(y4)} Z`;
+}
+
+/* ── Read a CSS variable from :root ── */
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/* ── Convert hsl+theme to a usable color.
+   We blend between the theme's dark background and the pure hue color
+   so ALL presets look correct. ── */
+function wheelFill(hue,sat,lightness,alpha=1){
+  /* Pure hsl — the wheel always uses real pigment colors regardless of theme,
+     but we darken/lighten the background rings using the theme glow color as tint */
+  if(alpha<1) return`hsla(${hue},${sat}%,${lightness}%,${alpha})`;
+  return`hsl(${hue},${sat}%,${lightness}%)`;
+}
+
+/* stroke color uses theme --border-hi tinted with the petal hue */
+function wheelStroke(hue,sat,l){
+  return`hsl(${hue},${Math.round(sat*0.8)}%,${l}%)`;
+}
+
+/* ring structure lines use theme glow color */
+function ringLine(){
+  const g=cssVar('--glow')||'rgba(0,255,60,1)';
+  /* convert to rgba with low opacity */
+  if(g.startsWith('#')){
+    const r=parseInt(g.slice(1,3),16);const gg=parseInt(g.slice(3,5),16);const b=parseInt(g.slice(5,7),16);
+    return`rgba(${r},${gg},${b},0.09)`;
+  }
+  return g.replace('rgb(','rgba(').replace(')',',0.09)');
+}
+
+function renderWheel(){
+  const svg=document.getElementById('wheel-svg');
+  const data=getData();const dyads=getDyads();const vals=getVals();
+  const n=data.length;const slice=360/n; /* 45 deg per petal */
+
+  /* Ring radii */
+  const R0=12;   /* core */
+  const R1=32;   /* ring1 (mild) outer */
+  const R2=58;   /* ring2 (moderate) outer */
+  const R3=84;   /* ring3 (intense) outer — fixed, opacity/brightness varies */
+  const RDYAD=96;/* dyad label ring */
+  const RLABEL=108;/* main label ring */
+
+  const rl=ringLine();
+  let html='';
+
+  /* ── Structure circles ── */
+  [R1,R2,R3].forEach(r=>{ html+=`<circle cx="0" cy="0" r="${r}" fill="none" stroke="${rl}" stroke-width="0.5"/>`; });
+
+  /* ── Spoke lines (between petals) ── */
+  for(let i=0;i<n;i++){
+    const [sx,sy]=pxy(i*slice,R0+1);const[ex,ey]=pxy(i*slice,R3+1);
+    html+=`<line x1="${f(sx)}" y1="${f(sy)}" x2="${f(ex)}" y2="${f(ey)}" stroke="${rl}" stroke-width="0.5"/>`;
+  }
+
+  /* ── Petal segments ── */
+  data.forEach((d,i)=>{
+    const aS=i*slice, aE=(i+1)*slice;
+    const v=vals[i];
+
+    /* Ring 1 — always shown, mild intensity */
+    const l1base=v===0?6:9+v*0.9;
+    html+=`<path d="${arc(R0,R1,aS,aE)}" fill="${wheelFill(d.hue,Math.round(d.sat*0.55),l1base)}" stroke="${wheelStroke(d.hue,d.sat,l1base+14)}" stroke-width="0.5"/>`;
+
+    /* Ring 2 — moderate, grows in brightness with val */
+    const l2base=v===0?4:8+v*1.8;
+    const a2=v===0?0.12:0.35+v*0.065;
+    html+=`<path d="${arc(R1,R2,aS,aE)}" fill="${wheelFill(d.hue,d.sat,l2base,a2)}" stroke="${wheelStroke(d.hue,d.sat,l2base+14)}" stroke-width="0.5"/>`;
+
+    /* Ring 3 — intense, brightness and glow scale with val */
+    const l3base=v===0?3:6+v*2.8;
+    const a3=v===0?0.06:0.15+v*0.085;
+    const glowStr=v>=8?`filter:drop-shadow(0 0 2.5px hsl(${d.hue},${d.sat}%,65%))`:'';
+    html+=`<path d="${arc(R2,R3,aS,aE)}" fill="${wheelFill(d.hue,d.sat,l3base,a3)}" stroke="${wheelStroke(d.hue,d.sat,l3base+16)}" stroke-width="${v>=8?0.8:0.4}" style="${glowStr}"/>`;
+
+    /* ── Ring sub-labels — tangential text inside each ring ── */
+    const mid=aS+slice/2;
+    /*
+      TANGENTIAL text (follows the arc curvature):
+      A horizontal SVG text at point pxy(mid, r) rotated by `mid` degrees
+      will have its baseline pointing in the arc-tangent direction.
+      Bottom-half petals (90 < mid < 270) need +180 to avoid upside-down text.
+    */
+    const m360=((mid%360)+360)%360;
+    const flip=m360>90&&m360<270;
+    const trot=mid+(flip?180:0);
+
+    const ringText=(text,r,hue,sat,lightBase,opacity,fsize)=>{
+      const[tx,ty]=pxy(mid,r);
+      const fc=`hsl(${hue},${Math.round(sat*0.7)}%,${lightBase+22}%)`;
+      return`<text x="${f(tx)}" y="${f(ty)}" text-anchor="middle" dominant-baseline="middle" font-family="'Share Tech Mono',monospace" font-size="${fsize}" fill="${fc}" opacity="${opacity.toFixed(2)}" transform="rotate(${f(trot)},${f(tx)},${f(ty)})">${text}</text>`;
+    };
+
+    html+=ringText(d.r1,(R0+R1)/2, d.hue,d.sat, v===0?5:l1base,  v===0?0.25:0.65, 3.4);
+    html+=ringText(d.r2,(R1+R2)/2, d.hue,d.sat, v===0?3:l2base,  v===0?0.14:0.70, 3.4);
+    html+=ringText(d.r3,(R2+R3)/2, d.hue,d.sat, v===0?2:l3base,  v===0?0.07:Math.min(0.78,0.18+v*0.09), 3.4);
+
+    /* ── Outer main label — RADIAL outward ── */
+    const[lx,ly]=pxy(mid,RLABEL);
+    /*
+      RADIAL text (points away from centre like a spoke):
+      Rotate text by `mid` degrees so it aligns along the spoke.
+      This makes text read outward on the top half.
+      Bottom half: add 180 so reader doesn't see it upside-down.
+      We use text-anchor="middle" so the text centres on the spoke.
+    */
+    const lrot=mid+(flip?180:0);
+    const lc=`hsl(${d.hue},${Math.round(d.sat*0.8)}%,${52+v*2.5}%)`;
+    html+=`<text x="${f(lx)}" y="${f(ly)}" text-anchor="middle" dominant-baseline="middle" font-family="'Share Tech Mono',monospace" font-size="5.2" fill="${lc}" font-weight="bold" transform="rotate(${f(lrot)},${f(lx)},${f(ly)})">${d.label}</text>`;
+  });
+
+  /* ── Dyad labels — on the spoke between petals, toggleable ── */
+  const dyadActive=getDyadActive();
+  dyads.forEach((dy,i)=>{
+    if(!dyadActive[i]) return; /* hidden if toggled off */
+    const spokeAngle=((dy.a+1)*slice)%360;
+    const[dx,dy2]=pxy(spokeAngle,RDYAD);
+    const sm=((spokeAngle%360)+360)%360;
+    const dflip=sm>90&&sm<270;
+    /*
+      Dyad text is TANGENTIAL on the spoke (same formula as ring text).
+      Rotate by spokeAngle to align along the spoke tangent.
+      Flip bottom half.
+    */
+    const drot=spokeAngle+(dflip?180:0);
+    const dc=`hsl(${dy.hue},${Math.round(dy.sat*0.65)}%,38%)`;
+    html+=`<text x="${f(dx)}" y="${f(dy2)}" text-anchor="middle" dominant-baseline="middle" font-family="'Share Tech Mono',monospace" font-size="3.6" fill="${dc}" transform="rotate(${f(drot)},${f(dx)},${f(dy2)})" opacity="0.88" font-style="italic">${dy.label}</text>`;
+  });
+
+  /* ── Centre core ── */
+  const glowDim=cssVar('--glow-dim')||'#00a828';
+  const bgCol=cssVar('--bg')||'#000300';
+  const faintCol=cssVar('--text-faint')||'#005518';
+  html+=`<circle cx="0" cy="0" r="${R0}" fill="${bgCol}" stroke="${glowDim}" stroke-width="0.8"/>`;
+  html+=`<text x="0" y="-2.2" text-anchor="middle" dominant-baseline="middle" font-family="'VT323',monospace" font-size="6.5" fill="${glowDim}" letter-spacing="0.5">${currentMode==='emotion'?'PSYCHE':'POWER'}</text>`;
+  html+=`<text x="0" y="4.5" text-anchor="middle" dominant-baseline="middle" font-family="'VT323',monospace" font-size="4" fill="${faintCol}">INDEX</text>`;
+
+  svg.innerHTML=html;
+}
+
+function buildSliders(){
+  const data=getData();const vals=getVals();
+  const wrap=document.getElementById('wheel-controls');wrap.innerHTML='';
+  const isParent=currentMode==='emotion'||currentMode==='power';
+
+  /* ── Sliders ── */
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:1fr;gap:10px';
+  if(window.innerWidth>=520) grid.style.gridTemplateColumns='1fr 1fr';
+
+  data.forEach((d,i)=>{
+    const row=document.createElement('div');row.className='emo-row';
+    const v=vals[i];
+    const hue=d.hue;const sat=d.sat;
+    const lt=v<=3?(d.r1||d.label):v<=7?(d.r2||d.label):(d.r3||d.label);
+    const lbl=document.createElement('div');lbl.className='emo-label';
+    lbl.innerHTML=`<span style="color:hsl(${hue},${sat}%,58%);letter-spacing:1px;font-size:11px">${d.label}</span><span style="font-size:9px;color:hsl(${hue},${sat}%,32%);letter-spacing:0.5px;display:block;margin-top:2px">${v>0?lt:'—'}</span>`;
+    const sl=document.createElement('input');sl.type='range';sl.min='0';sl.max='10';sl.step='1';sl.value=v;sl.className='emo-slider';
+    sl.style.accentColor=`hsl(${hue},${sat}%,55%)`;
+    const num=document.createElement('div');num.className='emo-val';num.textContent=v;
+    sl.addEventListener('input',()=>{
+      const nv=parseInt(sl.value);num.textContent=nv;
+      if(currentMode==='emotion')emotionVals[i]=nv;
+      else if(currentMode==='power')powerVals[i]=nv;
+      else if(currentMode==='dyad-e')dyadEmoVals[i]=nv;
+      else dyadPowVals[i]=nv;
+      const nt=nv<=3?(d.r1||d.label):nv<=7?(d.r2||d.label):(d.r3||d.label);
+      lbl.innerHTML=`<span style="color:hsl(${hue},${sat}%,58%);letter-spacing:1px;font-size:11px">${d.label}</span><span style="font-size:9px;color:hsl(${hue},${sat}%,32%);letter-spacing:0.5px;display:block;margin-top:2px">${nv>0?nt:'—'}</span>`;
+      renderWheel();
+    });
+    row.append(lbl,sl,num);grid.appendChild(row);
+  });
+  wrap.appendChild(grid);
+
+  /* ── Dyad toggles — only on parent wheels ── */
+  if(!isParent)return;
+  const dyads=getDyads();const dyadActive=getDyadActive();
+
+  const dSep=document.createElement('div');
+  dSep.style.cssText='height:1px;background:var(--border-hi);opacity:0.4;margin:8px 0 6px';
+  wrap.appendChild(dSep);
+  const dTitle=document.createElement('div');
+  dTitle.style.cssText='font-size:10px;letter-spacing:3px;color:var(--text-faint);text-transform:uppercase;margin-bottom:8px';
+  dTitle.textContent='> DYADS // TAP TO TOGGLE_';
+  wrap.appendChild(dTitle);
+  const dGrid=document.createElement('div');
+  dGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
+  if(window.innerWidth>=520) dGrid.style.gridTemplateColumns='repeat(4,1fr)';
+  dyads.forEach((dy,i)=>{
+    const btn=document.createElement('button');
+    const on=dyadActive[i]===1;
+    btn.style.cssText=`background:${on?`hsl(${dy.hue},${dy.sat}%,12%)`:'transparent'};border:1px solid hsl(${dy.hue},${Math.round(dy.sat*0.5)}%,${on?28:16}%);color:hsl(${dy.hue},${dy.sat}%,${on?55:28}%);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:8px 4px;cursor:pointer;text-align:center;text-transform:uppercase;-webkit-appearance:none;border-radius:0;transition:all .15s;line-height:1.5`;
+    btn.innerHTML=`<span style="display:block;font-size:7px;opacity:0.55;margin-bottom:2px">${data[dy.a].label.slice(0,3)}+${data[dy.b].label.slice(0,3)}</span>${dy.label}`;
+    btn.addEventListener('click',()=>{
+      const newOn=dyadActive[i]===0?1:0;
+      if(currentMode==='emotion')emotionDyads[i]=newOn;else powerDyads[i]=newOn;
+      btn.style.background=newOn?`hsl(${dy.hue},${dy.sat}%,12%)`:'transparent';
+      btn.style.borderColor=`hsl(${dy.hue},${Math.round(dy.sat*0.5)}%,${newOn?28:16}%)`;
+      btn.style.color=`hsl(${dy.hue},${dy.sat}%,${newOn?55:28}%)`;
+      renderWheel();
+    });
+    dGrid.appendChild(btn);
+  });
+  wrap.appendChild(dGrid);
+}
+
+function switchWheel(mode){
+  currentMode=mode;
+  ['emotion','power','dyad-e','dyad-p'].forEach(m=>{
+    const el=document.getElementById('tab-'+m);
+    if(el)el.classList.toggle('active',m===mode);
+  });
+  renderWheel();buildSliders();
+}
+
+function toggleSec(id){
+  const s=document.getElementById(id);
+  s.querySelector('.sec-head').classList.toggle('open');
+  s.querySelector('.sec-body').classList.toggle('hidden');
+}
+
+const tierMap={1:'TIER-1 // THE CHANGED',2:'TIER-2 // THE DORMANT',3:'TIER-3 // UNALTERED'};
+let currentTier=0;
+function setTier(n){
+  currentTier=n;
+  document.querySelectorAll('.tier-dot').forEach(d=>d.classList.toggle('on',+d.dataset.t===n));
+  document.getElementById('tier-text').textContent=tierMap[n]||'STATUS: UNCLASSIFIED';
+}
+
+document.getElementById('portrait-file').addEventListener('change',function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{document.getElementById('portrait-img').src=ev.target.result;document.getElementById('portrait-img').style.display='block';document.getElementById('portrait-hint').style.display='none'};
+  reader.readAsDataURL(file);
+});
+
+function setupGif(inputId,imgId,hintId){
+  document.getElementById(inputId).addEventListener('change',function(e){
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{const img=document.getElementById(imgId);img.src=ev.target.result;img.style.display='block';const h=document.getElementById(hintId);if(h)h.style.display='none'};
+    reader.readAsDataURL(file);
+  });
+}
+setupGif('gif-file','gif-img','gif-hint');
+setupGif('eg1','eg1i','eg1h');
+setupGif('eg2','eg2i','eg2h');
+setupGif('eg3','eg3i','eg3h');
+
+function getYTId(url){const m=url.match(/(?:youtu\.be\/|v=|\/embed\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null}
+function loadYT(){
+  const url=document.getElementById('yt-url').value.trim();const id=getYTId(url);
+  const wrap=document.getElementById('yt-wrap');const ph=document.getElementById('yt-ph');
+  if(!id){ph.textContent='> ERROR: INVALID YOUTUBE URL_';return}
+  wrap.innerHTML='';const iframe=document.createElement('iframe');iframe.src=`https://www.youtube.com/embed/${id}?rel=0`;iframe.allow='autoplay; encrypted-media';iframe.allowFullscreen=true;
+  wrap.appendChild(iframe);wrap.classList.add('loaded');ph.style.display='none';
+}
+function clearYT(){
+  const wrap=document.getElementById('yt-wrap');wrap.innerHTML='';wrap.classList.remove('loaded');
+  document.getElementById('yt-ph').style.display='';document.getElementById('yt-ph').textContent='> NO TRACK LOADED_';document.getElementById('yt-url').value='';
+}
+document.getElementById('yt-url').addEventListener('keydown',e=>{if(e.key==='Enter')loadYT()});
+
+let stampOn=false;
+function toggleStamp(){stampOn=!stampOn;document.getElementById('stamp').classList.toggle('on',stampOn)}
+
+const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+const rndHex=()=>Math.random().toString(16).substring(2,10).toUpperCase();
+document.getElementById('boot-id').textContent=`FILE: INTV-${rnd()}-${rnd()}`;
+document.getElementById('sess-id').textContent=rndHex();
+
+function openTheme(){document.getElementById('theme-overlay').classList.add('open')}
+function closeTheme(){document.getElementById('theme-overlay').classList.remove('open')}
+function closeIfOutside(e){if(e.target===document.getElementById('theme-overlay'))closeTheme()}
+function setVar(k,v){document.documentElement.style.setProperty(k,v)}
+function parseHex(hex){return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]}
+function darken(hex,a){if(!hex.startsWith('#'))return hex;const[r,g,b]=parseHex(hex);return`rgb(${Math.round(r*(1-a))},${Math.round(g*(1-a))},${Math.round(b*(1-a))})`}
+function setGlow(hex){setVar('--glow',hex);setVar('--text',hex);setVar('--text-body',hex);setVar('--glow-dim',darken(hex,.35));setVar('--text-dim',darken(hex,.35));setVar('--glow-faint',darken(hex,.75));setVar('--glow-trace',darken(hex,.9));setVar('--text-faint',darken(hex,.65));renderWheel&&renderWheel()}
+function setDanger(hex){setVar('--danger',hex);setVar('--danger-dim',darken(hex,.5))}
+const presets={
+  rot:{bg:'#000300',paper:'#000d01',glow:'#00ff3c',danger:'#ff2200',amber:'#ffaa00',border:'#1a5e22'},
+  amber:{bg:'#040200',paper:'#0a0600',glow:'#ffaa00',danger:'#ff4400',amber:'#ff6600',border:'#5e3e00'},
+  void:{bg:'#010008',paper:'#05001a',glow:'#8844ff',danger:'#ff0088',amber:'#aa44ff',border:'#2a0a5e'},
+  blood:{bg:'#080000',paper:'#120000',glow:'#ff3333',danger:'#ff0000',amber:'#ff6600',border:'#5e0000'},
+  ice:{bg:'#000508',paper:'#000d18',glow:'#44ddff',danger:'#ff4444',amber:'#44ffcc',border:'#0a3050'},
+  paper:{bg:'#e8e2d6',paper:'#f5f0e8',glow:'#2c2418',danger:'#8b1e1e',amber:'#8b5e20',border:'#a09080'},
+};
+function applyPreset(name){
+  const p=presets[name];if(!p)return;
+  document.body.style.background=p.bg;setVar('--bg',p.bg);setVar('--paper',p.paper);
+  setGlow(p.glow);setDanger(p.danger);setVar('--amber',p.amber);
+  setVar('--border-hi',p.border);setVar('--border',darken(p.border,.5));
+  /* Also update bg input so the color picker reflects the change */
+  renderWheel();
+}
+
+const factions=['RAIDERS / BANDITS','SETTLERS / CIVILIANS','TECH HUNTERS','TRADERS / CARAVANS','FORMER MILITARY','SCIENTISTS / PRE-WAR','ESCAPED EXPERIMENTS','RELIGIOUS / CULT GROUPS'];
+const factionVals=new Array(8).fill(0);
+function buildFactions(){
+  const grid=document.getElementById('faction-grid');
+  factions.forEach((name,fi)=>{
+    const row=document.createElement('div');row.className='faction-row';
+    const lbl=document.createElement('div');lbl.className='faction-name';lbl.textContent=name;
+    const pips=document.createElement('div');pips.className='faction-pips';
+    const num=document.createElement('div');num.className='faction-val';num.textContent='0';
+    for(let i=1;i<=10;i++){
+      const pip=document.createElement('div');pip.className='pip';
+      pip.addEventListener('click',()=>{factionVals[fi]=i;num.textContent=i;pips.querySelectorAll('.pip').forEach((p,idx)=>p.classList.toggle('on',idx<i))});
+      pips.appendChild(pip);
     }
+    row.append(lbl,pips,num);grid.appendChild(row);
+  });
+}
 
-    // Example Auto-Generation Call:
-    // This is where your bot/script would inject the character's data
-    generateCharacter("OPERATIVE_X", 75, 40, 85);
+/* SAVE SYSTEM */
+function collectFields(){const d={};document.querySelectorAll('[data-key]').forEach(el=>{d[el.dataset.key]=el.value});return d}
+function restoreFields(data){if(!data)return;document.querySelectorAll('[data-key]').forEach(el=>{if(data[el.dataset.key]!==undefined)el.value=data[el.dataset.key]})}
 
+function buildState(){
+  return{fields:collectFields(),tier:currentTier,emotionVals:emotionVals.slice(),powerVals:powerVals.slice(),dyadEmoVals:dyadEmoVals.slice(),dyadPowVals:dyadPowVals.slice(),emotionDyads:emotionDyads.slice(),powerDyads:powerDyads.slice(),factionVals:factionVals.slice(),wheelMode:currentMode,ytUrl:document.getElementById('yt-url').value};
+}
+
+function restoreState(state){
+  if(!state)return;
+  restoreFields(state.fields);
+  if(state.tier)setTier(state.tier);
+  if(state.emotionVals)emotionVals=state.emotionVals;
+  if(state.powerVals)powerVals=state.powerVals;
+  if(state.dyadEmoVals)dyadEmoVals=state.dyadEmoVals;
+  if(state.dyadPowVals)dyadPowVals=state.dyadPowVals;
+  if(state.emotionDyads)emotionDyads=state.emotionDyads;
+  if(state.powerDyads)powerDyads=state.powerDyads;
+  if(state.factionVals){
+    state.factionVals.forEach((v,fi)=>{
+      factionVals[fi]=v;
+      const rows=document.querySelectorAll('.faction-row');
+      if(rows[fi]){
+        rows[fi].querySelectorAll('.pip').forEach((p,idx)=>p.classList.toggle('on',idx<v));
+        const nm=rows[fi].querySelector('.faction-val');if(nm)nm.textContent=v;
+      }
+    });
+  }
+  if(state.wheelMode)currentMode=state.wheelMode;
+  if(state.ytUrl)document.getElementById('yt-url').value=state.ytUrl;
+  ['emotion','power','dyad-e','dyad-p'].forEach(m=>{
+    const el=document.getElementById('tab-'+m);
+    if(el)el.classList.toggle('active',m===currentMode);
+  });
+  renderWheel();buildSliders();
+}
+
+function saveHTML(){
+  const state=buildState();
+  const imgs={};
+  ['portrait-img','gif-img','eg1i','eg2i','eg3i'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.src&&el.src.startsWith('data:'))imgs[id]=el.src;
+  });
+  const stateData=JSON.stringify({state,imgs});
+  const clone=document.documentElement.cloneNode(true);
+  const old=clone.querySelector('#_ss');if(old)old.remove();
+  const sc=clone.ownerDocument.createElement('script');
+  sc.id='_ss';
+  sc.textContent=`(function(){const _d=${stateData};window.addEventListener('DOMContentLoaded',function(){if(window._sr)return;window._sr=true;if(_d.state)restoreState(_d.state);if(_d.imgs){Object.entries(_d.imgs).forEach(([id,src])=>{const el=document.getElementById(id);if(el){el.src=src;el.style.display='block';const hmap={'portrait-img':'portrait-hint','gif-img':'gif-hint','eg1i':'eg1h','eg2i':'eg2h','eg3i':'eg3h'};const h=document.getElementById(hmap[id]);if(h)h.style.display='none'}});}});})();`;
+  clone.querySelector('body').appendChild(sc);
+  const html='<!DOCTYPE html>\n'+clone.outerHTML;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const nm=(collectFields().name||'character').replace(/[^a-z0-9]/gi,'_').toLowerCase();
+  a.download=`INTV_${nm}_sheet.html`;a.click();URL.revokeObjectURL(a.href);
+  showStatus('SAVED TO FILE_');
+}
+
+function copyLink(){
+  const state=buildState();
+  const json=JSON.stringify(state);
+  const compressed=btoa(unescape(encodeURIComponent(json)));
+  const url=window.location.href.split('?')[0]+'?d='+compressed;
+  const fallback=()=>{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showStatus('LINK COPIED_')};
+  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>showStatus('LINK COPIED_')).catch(fallback)}else{fallback()}
+}
+
+function loadFromURL(){
+  const params=new URLSearchParams(window.location.search);const d=params.get('d');if(!d)return;
+  try{const json=decodeURIComponent(escape(atob(d)));const state=JSON.parse(json);restoreState(state);showStatus('DATA LOADED FROM LINK_')}catch(e){console.warn('URL load failed:',e)}
+}
+
+function showStatus(msg){
+  const el=document.getElementById('save-status');el.textContent='> '+msg;
+  setTimeout(()=>{el.textContent=''},3200);
+}
+
+buildFactions();renderWheel();buildSliders();loadFromURL();
 </script>
+
 </body>
 </html>
