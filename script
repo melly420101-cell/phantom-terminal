@@ -1,0 +1,542 @@
+<script>
+/* ══════════════════════════════════════
+   INTV // TERMINAL SCRIPT — v6.0
+   PCB Telemetry Engine + Original Functions
+══════════════════════════════════════ */
+
+// 1. INJECT DYNAMIC CSS FOR PCB & MOBILE OVERRIDES
+const styleOverride = document.createElement('style');
+styleOverride.textContent = `
+  /* PCB Trace Styling */
+  .trace-bg { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 0.75; stroke-linejoin: bevel; }
+  .trace-active-base { fill: none; stroke-width: 1; stroke-linejoin: bevel; opacity: 0.4; }
+  
+  /* Ultra-Bright Traveling Electricity Pulse */
+  .trace-pulse {
+    fill: none;
+    stroke: #ffffff !important;
+    stroke-width: 2.5px !important;
+    stroke-linecap: round;
+    stroke-dasharray: 12 300 !important;
+    filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 15px currentColor) !important;
+    animation: flowData 1.2s linear infinite !important;
+  }
+  @keyframes flowData { from { stroke-dashoffset: 312; } to { stroke-dashoffset: 0; } }
+  
+  .solder-pad { transition: all 0.3s ease; }
+  .pcb-text { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+  
+  /* Mobile-Friendly Slider Overrides */
+  .wheel-controls input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: var(--border-hi);
+    height: 4px;
+    outline: none;
+    margin: 14px 0 !important;
+    border-radius: 0;
+  }
+  .wheel-controls input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px !important;
+    height: 24px !important;
+    background: currentColor;
+    cursor: pointer;
+    box-shadow: 0 0 10px currentColor;
+    border: 1px solid #fff;
+    border-radius: 3px;
+  }
+  
+  /* Collapsible Slider UI */
+  .collapse-header {
+    background: var(--glow-trace);
+    border: 1px solid var(--border-hi);
+    color: var(--text);
+    padding: 12px 15px;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    transition: background 0.2s;
+  }
+  .collapse-header:hover { background: rgba(0, 255, 60, 0.1); }
+  .collapse-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 15px;
+    border: 1px solid var(--border-hi);
+    border-top: none;
+    background: rgba(0, 5, 2, 0.6);
+  }
+`;
+document.head.appendChild(styleOverride);
+
+// 2. DATA ARRAYS
+const EW=[
+  {id:'joy',        label:'JOY',          r1:'SERENITY',   r2:'JOY',          r3:'ECSTASY',    hue:55,  sat:98},
+  {id:'trust',      label:'TRUST',        r1:'ACCEPTANCE', r2:'TRUST',        r3:'ADMIRATION', hue:105, sat:65},
+  {id:'fear',       label:'FEAR',         r1:'APPREHENSION',r2:'FEAR',        r3:'TERROR',     hue:148, sat:60},
+  {id:'surprise',   label:'SURPRISE',     r1:'DISTRACTION',r2:'SURPRISE',     r3:'AMAZEMENT',  hue:188, sat:70},
+  {id:'sadness',    label:'SADNESS',      r1:'PENSIVENESS',r2:'SADNESS',      r3:'GRIEF',      hue:222, sat:72},
+  {id:'disgust',    label:'DISGUST',      r1:'BOREDOM',    r2:'DISGUST',      r3:'LOATHING',   hue:272, sat:58},
+  {id:'anger',      label:'ANGER',        r1:'ANNOYANCE',  r2:'ANGER',        r3:'RAGE',       hue:8,   sat:92},
+  {id:'anticipation',label:'ANTICIPATION',r1:'INTEREST',   r2:'ANTICIPATION', r3:'VIGILANCE',  hue:36,  sat:96},
+];
+const DYADS=[
+  {a:0,b:1, label:'LOVE',           hue:80,  sat:80},
+  {a:1,b:2, label:'SUBMISSION',     hue:128, sat:55},
+  {a:2,b:3, label:'AWE',            hue:168, sat:55},
+  {a:3,b:4, label:'DISAPPROVAL',    hue:205, sat:65},
+  {a:4,b:5, label:'REMORSE',        hue:247, sat:60},
+  {a:5,b:6, label:'CONTEMPT',       hue:300, sat:50},
+  {a:6,b:7, label:'AGGRESSIVENESS', hue:22,  sat:88},
+  {a:7,b:0, label:'OPTIMISM',       hue:46,  sat:96},
+];
+const PW=[
+  {id:'offence',    label:'OFFENCE',     r1:'MINOR',     r2:'MODERATE',   r3:'LETHAL',     hue:8,   sat:90},
+  {id:'defence',    label:'DEFENCE',     r1:'PASSIVE',   r2:'ACTIVE',     r3:'FORTRESS',   hue:200, sat:68},
+  {id:'control',    label:'CONTROL',     r1:'NUDGE',     r2:'INFLUENCE',  r3:'DOMINATE',   hue:272, sat:62},
+  {id:'speed',      label:'SPEED',       r1:'FAST',      r2:'BLUR',       r3:'INSTANT',    hue:50,  sat:95},
+  {id:'perception', label:'PERCEPTION',  r1:'KEEN',      r2:'ACUTE',      r3:'OMNISCIENT', hue:170, sat:58},
+  {id:'endurance',  label:'ENDURANCE',   r1:'RESILIENT', r2:'TOUGH',      r3:'IMMORTAL',   hue:118, sat:62},
+  {id:'utility',    label:'UTILITY',     r1:'MINOR',     r2:'VERSATILE',  r3:'ABSOLUTE',   hue:34,  sat:78},
+  {id:'corruption', label:'CORRUPTION',  r1:'TAINTED',   r2:'WARPED',     r3:'CONSUMED',   hue:300, sat:55},
+];
+const PDYADS=[
+  {a:0,b:1, label:'SIEGE',      hue:20,  sat:75},
+  {a:1,b:2, label:'SHIELD',     hue:236, sat:62},
+  {a:2,b:3, label:'BLINK',      hue:160, sat:70},
+  {a:3,b:4, label:'REFLEX',     hue:110, sat:76},
+  {a:4,b:5, label:'RESILIENCE', hue:144, sat:60},
+  {a:5,b:6, label:'FORTIFY',    hue:76,  sat:68},
+  {a:6,b:7, label:'ENTROPY',    hue:320, sat:60},
+  {a:7,b:0, label:'BLITZ',      hue:22,  sat:90},
+];
+
+let currentMode='emotion'; 
+let emotionVals =[0,0,0,0,0,0,0,0];
+let powerVals   =[0,0,0,0,0,0,0,0];
+let dyadEmoVals =[0,0,0,0,0,0,0,0]; 
+let dyadPowVals =[0,0,0,0,0,0,0,0]; 
+
+// Retained for save-file backwards compatibility
+let emotionDyads=[1,1,1,1,1,1,1,1];
+let powerDyads  =[1,1,1,1,1,1,1,1];
+
+// 3. PCB MATH HELPERS
+function pxy(deg, r) {
+  const a = (deg - 90) * Math.PI / 180;
+  return [r * Math.cos(a), r * Math.sin(a)];
+}
+
+function createTrace(startRadius, endRadius, baseAngle, spreadAngle) {
+  const finalAngle = baseAngle + spreadAngle;
+  const [startX, startY] = pxy(baseAngle, startRadius);
+  const midRad1 = startRadius + 20;
+  const [mid1X, mid1Y] = pxy(baseAngle, midRad1);
+  const midRad2 = endRadius - 30;
+  const [mid2X, mid2Y] = pxy(finalAngle, midRad2);
+  const [endX, endY] = pxy(finalAngle, endRadius);
+  return `M ${startX.toFixed(1)} ${startY.toFixed(1)} L ${mid1X.toFixed(1)} ${mid1Y.toFixed(1)} L ${mid2X.toFixed(1)} ${mid2Y.toFixed(1)} L ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+}
+
+// 4. THE RENDER ENGINE
+function renderWheel() {
+  const svg = document.getElementById('wheel-svg');
+  // Update viewBox to fit the new PCB layout
+  svg.setAttribute('viewBox', '-350 -350 700 700');
+  
+  const isEmo = currentMode.includes('emotion') || currentMode.includes('dyad-e');
+  const primaryState = isEmo ? emotionVals : powerVals;
+  const dyadState = isEmo ? dyadEmoVals : dyadPowVals;
+  const primary = isEmo ? EW : PW;
+  const dyads = isEmo ? DYADS : PDYADS;
+
+  let html = `
+    <defs>
+      <filter id="extremeGlow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blur1" />
+        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur2" />
+        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur3" />
+        <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 4 0" in="blur3" result="boost" />
+        <feMerge>
+          <feMergeNode in="boost" />
+          <feMergeNode in="blur2" />
+          <feMergeNode in="blur1" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  `;
+
+  // HUD Radar Grid
+  html += `<circle cx="0" cy="0" r="100" fill="none" stroke="rgba(0,255,60,0.1)" stroke-width="0.5" stroke-dasharray="2 4"/>`;
+  html += `<circle cx="0" cy="0" r="200" fill="none" stroke="rgba(0,255,60,0.1)" stroke-width="0.5" stroke-dasharray="4 8"/>`;
+  html += `<circle cx="0" cy="0" r="300" fill="none" stroke="rgba(0,255,60,0.1)" stroke-width="0.5"/>`;
+  html += `<path d="M 0 -320 L 0 -280 M 0 280 L 0 320 M -320 0 L -280 0 M 280 0 L 320 0" stroke="rgba(0,255,60,0.3)" stroke-width="1"/>`;
+
+  // CPU Core
+  html += `<circle cx="0" cy="0" r="30" fill="#000" stroke="var(--glow)" stroke-width="1.5" filter="drop-shadow(0 0 8px var(--glow))"/>`;
+  html += `<circle cx="0" cy="0" r="24" fill="none" stroke="var(--glow)" stroke-width="0.5" stroke-dasharray="1 3"/>`;
+  html += `<text x="0" y="3" fill="var(--glow)" font-size="10" text-anchor="middle" font-weight="bold">${isEmo ? 'PSYCHE' : 'SERUM'}</text>`;
+
+  // Draw 24 Primary Nodes
+  primary.forEach((node, i) => {
+    const angle = i * 45;
+    const val = primaryState[i]; 
+    const color = `hsl(${node.hue}, ${node.sat}%, 60%)`;
+    
+    const tiers = [
+      { label: node.r1, spread: -12, radius: 150, threshold: 1 },
+      { label: node.r2, spread: 0,   radius: 200, threshold: 5 },
+      { label: node.r3, spread: 12,  radius: 250, threshold: 8 }
+    ];
+
+    tiers.forEach((tier) => {
+      const pathData = createTrace(32, tier.radius, angle, tier.spread);
+      const isActive = val >= tier.threshold;
+      
+      html += `<path d="${pathData}" class="trace-bg"/>`;
+      if (isActive) {
+        html += `<path d="${pathData}" stroke="${color}" class="trace-active-base"/>`;
+        html += `<path d="${pathData}" stroke="${color}" class="trace-pulse" filter="url(#extremeGlow)"/>`;
+      }
+      
+      const [padX, padY] = pxy(angle + tier.spread, tier.radius);
+      const padFill = isActive ? color : '#001205';
+      html += `<circle cx="${padX}" cy="${padY}" r="${isActive ? 4 : 3}" fill="${padFill}" stroke="${isActive ? '#fff' : 'rgba(255,255,255,0.2)'}" stroke-width="1" class="solder-pad" ${isActive ? `filter="drop-shadow(0 0 5px ${color})"` : ''}/>`;
+
+      let textAnchor = (angle + tier.spread + 360) % 360 > 180 ? 'end' : 'start';
+      let xOff = textAnchor === 'end' ? -8 : 8;
+      const textC = isActive ? `#fff` : `hsl(${node.hue}, ${node.sat}%, 20%)`;
+      html += `<text x="${padX + xOff}" y="${padY + 3}" fill="${textC}" class="pcb-text" text-anchor="${textAnchor}" ${isActive ? `style="text-shadow: 0 0 6px ${color};"` : ''}>${tier.label}</text>`;
+    });
+
+    // Category Label
+    const [catX, catY] = pxy(angle, 75);
+    let catAnchor = angle > 0 && angle < 180 ? 'start' : angle > 180 ? 'end' : 'middle';
+    let catXOff = angle === 0 || angle === 180 ? 0 : angle > 0 && angle < 180 ? 8 : -8;
+    let catYOff = angle === 90 || angle === 270 ? 12 : 3;
+    const catColor = val > 0 ? color : `rgba(255,255,255,0.2)`;
+    
+    html += `<rect x="${catX + catXOff - 25}" y="${catY + catYOff - 10}" width="50" height="14" fill="#000" rx="2"/>`;
+    html += `<text x="${catX + catXOff}" y="${catY + catYOff}" fill="${catColor}" font-size="11" font-weight="bold" text-anchor="middle" ${val>0?`style="text-shadow: 0 0 8px ${color};"`:''}>[ ${node.label} ]</text>`;
+  });
+
+  // Draw 8 Dyad Nodes
+  dyads.forEach((dyad, i) => {
+    const angle = (i * 45) + 22.5; 
+    const val = dyadState[i];
+    const color = `hsl(${dyad.hue}, ${dyad.sat}%, 60%)`;
+    const pathData = createTrace(32, 280, angle, 0);
+    const isActive = val > 0; 
+
+    html += `<path d="${pathData}" class="trace-bg"/>`;
+
+    if (isActive) {
+      html += `<path d="${pathData}" stroke="${color}" class="trace-active-base"/>`;
+      html += `<path d="${pathData}" stroke="${color}" class="trace-pulse" style="animation-duration: 1.8s;" filter="url(#extremeGlow)"/>`;
+    }
+
+    const [padX, padY] = pxy(angle, 280);
+    const padFill = isActive ? color : '#001205';
+    html += `<circle cx="${padX}" cy="${padY}" r="${isActive ? 4 : 3}" fill="${padFill}" stroke="${isActive ? '#fff' : 'rgba(255,255,255,0.2)'}" stroke-width="1" class="solder-pad" ${isActive ? `filter="drop-shadow(0 0 5px ${color})"` : ''}/>`;
+
+    let textAnchor = angle > 180 ? 'end' : 'start';
+    let xOff = textAnchor === 'end' ? -8 : 8;
+    const textC = isActive ? `#fff` : `hsl(${dyad.hue}, ${dyad.sat}%, 20%)`;
+    html += `<text x="${padX + xOff}" y="${padY + 3}" fill="${textC}" class="pcb-text" text-anchor="${textAnchor}" font-style="italic" ${isActive ? `style="text-shadow: 0 0 6px ${color};"` : ''}>${dyad.label}</text>`;
+  });
+
+  svg.innerHTML = html;
+}
+
+// 5. COLLAPSIBLE SLIDER UI
+window.toggleCollapse = function(contentId, iconId) {
+  const content = document.getElementById(contentId);
+  const icon = document.getElementById(iconId);
+  if (content.style.display === 'none' || content.style.display === '') {
+    content.style.display = 'flex';
+    icon.innerText = '[-]';
+  } else {
+    content.style.display = 'none';
+    icon.innerText = '[+]';
+  }
+};
+
+function buildSliders() {
+  const container = document.getElementById('wheel-controls');
+  container.innerHTML = '';
+  
+  const isEmo = currentMode.includes('emotion') || currentMode.includes('dyad-e');
+  const primaryState = isEmo ? emotionVals : powerVals;
+  const dyadState = isEmo ? dyadEmoVals : dyadPowVals;
+  const primary = isEmo ? EW : PW;
+  const dyads = isEmo ? DYADS : PDYADS;
+  const isDyadMode = currentMode.includes('dyad');
+
+  // -- PRIMARY ACCORDION --
+  const primaryHeader = document.createElement('div');
+  primaryHeader.className = 'collapse-header';
+  primaryHeader.innerHTML = `<span>> PRIMARY NODES</span><span id="icon-primary">${isDyadMode ? '[+]' : '[-]'}</span>`;
+  primaryHeader.onclick = () => toggleCollapse('content-primary', 'icon-primary');
+  container.appendChild(primaryHeader);
+
+  const primaryContent = document.createElement('div');
+  primaryContent.id = 'content-primary';
+  primaryContent.className = 'collapse-content';
+  primaryContent.style.display = isDyadMode ? 'none' : 'flex';
+  
+  primary.forEach((node, i) => {
+    const color = `hsl(${node.hue}, ${node.sat}%, 60%)`;
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    row.style.cssText = 'display:flex; flex-direction:column; gap:4px;';
+    row.innerHTML = `
+      <div class="slider-labels" style="display:flex; justify-content:space-between; font-size:11px; text-transform:uppercase; color: ${color}; text-shadow: 0 0 4px ${color}; font-weight:bold;">
+        <span>${node.label}</span>
+        <span style="color:#fff;" id="val-p-${i}">${primaryState[i] < 10 ? primaryState[i]+'.0' : primaryState[i]}</span>
+      </div>
+      <input type="range" min="0" max="10" value="${primaryState[i]}" style="color: ${color};">
+    `;
+    row.querySelector('input').addEventListener('input', (e) => {
+      let val = parseInt(e.target.value);
+      if(isEmo) emotionVals[i] = val; else powerVals[i] = val;
+      document.getElementById(`val-p-${i}`).innerText = val < 10 ? val + '.0' : val;
+      renderWheel(); 
+    });
+    primaryContent.appendChild(row);
+  });
+  container.appendChild(primaryContent);
+
+  // -- DYAD ACCORDION --
+  const dyadHeader = document.createElement('div');
+  dyadHeader.className = 'collapse-header';
+  dyadHeader.innerHTML = `<span>> DYAD NODES</span><span id="icon-dyad">${isDyadMode ? '[-]' : '[+]'}</span>`;
+  dyadHeader.onclick = () => toggleCollapse('content-dyad', 'icon-dyad');
+  container.appendChild(dyadHeader);
+
+  const dyadContent = document.createElement('div');
+  dyadContent.id = 'content-dyad';
+  dyadContent.className = 'collapse-content';
+  dyadContent.style.display = isDyadMode ? 'flex' : 'none'; 
+  
+  dyads.forEach((dyad, i) => {
+    const color = `hsl(${dyad.hue}, ${dyad.sat}%, 60%)`;
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    row.style.cssText = 'display:flex; flex-direction:column; gap:4px;';
+    row.innerHTML = `
+      <div class="slider-labels" style="display:flex; justify-content:space-between; font-size:11px; text-transform:uppercase; color: ${color}; text-shadow: 0 0 4px ${color}; font-weight:bold;">
+        <span>${dyad.label} <span style="font-size:8px;opacity:0.6;">(${primary[dyad.a].label.slice(0,3)}+${primary[dyad.b].label.slice(0,3)})</span></span>
+        <span style="color:#fff;" id="val-d-${i}">${dyadState[i] < 10 ? dyadState[i]+'.0' : dyadState[i]}</span>
+      </div>
+      <input type="range" min="0" max="10" value="${dyadState[i]}" style="color: ${color};">
+    `;
+    row.querySelector('input').addEventListener('input', (e) => {
+      let val = parseInt(e.target.value);
+      if(isEmo) dyadEmoVals[i] = val; else dyadPowVals[i] = val;
+      document.getElementById(`val-d-${i}`).innerText = val < 10 ? val + '.0' : val;
+      renderWheel(); 
+    });
+    dyadContent.appendChild(row);
+  });
+  container.appendChild(dyadContent);
+}
+
+// 6. ORIGINAL SHEET FUNCTIONS
+function switchWheel(mode){
+  currentMode=mode;
+  ['emotion','power','dyad-e','dyad-p'].forEach(m=>{
+    const el=document.getElementById('tab-'+m);
+    if(el)el.classList.toggle('active',m===mode);
+  });
+  renderWheel();buildSliders();
+}
+
+function toggleSec(id){
+  const s=document.getElementById(id);
+  s.querySelector('.sec-head').classList.toggle('open');
+  s.querySelector('.sec-body').classList.toggle('hidden');
+}
+
+const tierMap={1:'TIER-1 // THE CHANGED',2:'TIER-2 // THE DORMANT',3:'TIER-3 // UNALTERED'};
+let currentTier=0;
+function setTier(n){
+  currentTier=n;
+  document.querySelectorAll('.tier-dot').forEach(d=>d.classList.toggle('on',+d.dataset.t===n));
+  document.getElementById('tier-text').textContent=tierMap[n]||'STATUS: UNCLASSIFIED';
+}
+
+document.getElementById('portrait-file').addEventListener('change',function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{document.getElementById('portrait-img').src=ev.target.result;document.getElementById('portrait-img').style.display='block';document.getElementById('portrait-hint').style.display='none'};
+  reader.readAsDataURL(file);
+});
+
+function setupGif(inputId,imgId,hintId){
+  document.getElementById(inputId).addEventListener('change',function(e){
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{const img=document.getElementById(imgId);img.src=ev.target.result;img.style.display='block';const h=document.getElementById(hintId);if(h)h.style.display='none'};
+    reader.readAsDataURL(file);
+  });
+}
+setupGif('gif-file','gif-img','gif-hint');
+setupGif('eg1','eg1i','eg1h');
+setupGif('eg2','eg2i','eg2h');
+setupGif('eg3','eg3i','eg3h');
+
+function getYTId(url){const m=url.match(/(?:youtu\.be\/|v=|\/embed\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null}
+function loadYT(){
+  const url=document.getElementById('yt-url').value.trim();const id=getYTId(url);
+  const wrap=document.getElementById('yt-wrap');const ph=document.getElementById('yt-ph');
+  if(!id){ph.textContent='> ERROR: INVALID YOUTUBE URL_';return}
+  wrap.innerHTML='';const iframe=document.createElement('iframe');iframe.src=`https://www.youtube.com/embed/${id}?rel=0`;iframe.allow='autoplay; encrypted-media';iframe.allowFullscreen=true;
+  wrap.appendChild(iframe);wrap.classList.add('loaded');ph.style.display='none';
+}
+function clearYT(){
+  const wrap=document.getElementById('yt-wrap');wrap.innerHTML='';wrap.classList.remove('loaded');
+  document.getElementById('yt-ph').style.display='';document.getElementById('yt-ph').textContent='> NO TRACK LOADED_';document.getElementById('yt-url').value='';
+}
+document.getElementById('yt-url').addEventListener('keydown',e=>{if(e.key==='Enter')loadYT()});
+
+let stampOn=false;
+function toggleStamp(){stampOn=!stampOn;document.getElementById('stamp').classList.toggle('on',stampOn)}
+
+const rnd=()=>Math.random().toString(36).substring(2,6).toUpperCase();
+const rndHex=()=>Math.random().toString(16).substring(2,10).toUpperCase();
+document.getElementById('boot-id').textContent=`FILE: INTV-${rnd()}-${rnd()}`;
+document.getElementById('sess-id').textContent=rndHex();
+
+function openTheme(){document.getElementById('theme-overlay').classList.add('open')}
+function closeTheme(){document.getElementById('theme-overlay').classList.remove('open')}
+function closeIfOutside(e){if(e.target===document.getElementById('theme-overlay'))closeTheme()}
+function setVar(k,v){document.documentElement.style.setProperty(k,v)}
+function parseHex(hex){return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]}
+function darken(hex,a){if(!hex.startsWith('#'))return hex;const[r,g,b]=parseHex(hex);return`rgb(${Math.round(r*(1-a))},${Math.round(g*(1-a))},${Math.round(b*(1-a))})`}
+function setGlow(hex){setVar('--glow',hex);setVar('--text',hex);setVar('--text-body',hex);setVar('--glow-dim',darken(hex,.35));setVar('--text-dim',darken(hex,.35));setVar('--glow-faint',darken(hex,.75));setVar('--glow-trace',darken(hex,.9));setVar('--text-faint',darken(hex,.65));renderWheel&&renderWheel()}
+function setDanger(hex){setVar('--danger',hex);setVar('--danger-dim',darken(hex,.5))}
+const presets={
+  rot:{bg:'#000300',paper:'#000d01',glow:'#00ff3c',danger:'#ff2200',amber:'#ffaa00',border:'#1a5e22'},
+  amber:{bg:'#040200',paper:'#0a0600',glow:'#ffaa00',danger:'#ff4400',amber:'#ff6600',border:'#5e3e00'},
+  void:{bg:'#010008',paper:'#05001a',glow:'#8844ff',danger:'#ff0088',amber:'#aa44ff',border:'#2a0a5e'},
+  blood:{bg:'#080000',paper:'#120000',glow:'#ff3333',danger:'#ff0000',amber:'#ff6600',border:'#5e0000'},
+  ice:{bg:'#000508',paper:'#000d18',glow:'#44ddff',danger:'#ff4444',amber:'#44ffcc',border:'#0a3050'},
+  paper:{bg:'#e8e2d6',paper:'#f5f0e8',glow:'#2c2418',danger:'#8b1e1e',amber:'#8b5e20',border:'#a09080'},
+};
+function applyPreset(name){
+  const p=presets[name];if(!p)return;
+  document.body.style.background=p.bg;setVar('--bg',p.bg);setVar('--paper',p.paper);
+  setGlow(p.glow);setDanger(p.danger);setVar('--amber',p.amber);
+  setVar('--border-hi',p.border);setVar('--border',darken(p.border,.5));
+  renderWheel();
+}
+
+const factions=['RAIDERS / BANDITS','SETTLERS / CIVILIANS','TECH HUNTERS','TRADERS / CARAVANS','FORMER MILITARY','SCIENTISTS / PRE-WAR','ESCAPED EXPERIMENTS','RELIGIOUS / CULT GROUPS'];
+const factionVals=new Array(8).fill(0);
+function buildFactions(){
+  const grid=document.getElementById('faction-grid');
+  factions.forEach((name,fi)=>{
+    const row=document.createElement('div');row.className='faction-row';
+    const lbl=document.createElement('div');lbl.className='faction-name';lbl.textContent=name;
+    const pips=document.createElement('div');pips.className='faction-pips';
+    const num=document.createElement('div');num.className='faction-val';num.textContent='0';
+    for(let i=1;i<=10;i++){
+      const pip=document.createElement('div');pip.className='pip';
+      pip.addEventListener('click',()=>{factionVals[fi]=i;num.textContent=i;pips.querySelectorAll('.pip').forEach((p,idx)=>p.classList.toggle('on',idx<i))});
+      pips.appendChild(pip);
+    }
+    row.append(lbl,pips,num);grid.appendChild(row);
+  });
+}
+
+// 7. SAVING & LOADING
+function collectFields(){const d={};document.querySelectorAll('[data-key]').forEach(el=>{d[el.dataset.key]=el.value});return d}
+function restoreFields(data){if(!data)return;document.querySelectorAll('[data-key]').forEach(el=>{if(data[el.dataset.key]!==undefined)el.value=data[el.dataset.key]})}
+
+function buildState(){
+  return{fields:collectFields(),tier:currentTier,emotionVals:emotionVals.slice(),powerVals:powerVals.slice(),dyadEmoVals:dyadEmoVals.slice(),dyadPowVals:dyadPowVals.slice(),emotionDyads:emotionDyads.slice(),powerDyads:powerDyads.slice(),factionVals:factionVals.slice(),wheelMode:currentMode,ytUrl:document.getElementById('yt-url').value};
+}
+
+function restoreState(state){
+  if(!state)return;
+  restoreFields(state.fields);
+  if(state.tier)setTier(state.tier);
+  if(state.emotionVals)emotionVals=state.emotionVals;
+  if(state.powerVals)powerVals=state.powerVals;
+  if(state.dyadEmoVals)dyadEmoVals=state.dyadEmoVals;
+  if(state.dyadPowVals)dyadPowVals=state.dyadPowVals;
+  if(state.emotionDyads)emotionDyads=state.emotionDyads;
+  if(state.powerDyads)powerDyads=state.powerDyads;
+  if(state.factionVals){
+    state.factionVals.forEach((v,fi)=>{
+      factionVals[fi]=v;
+      const rows=document.querySelectorAll('.faction-row');
+      if(rows[fi]){
+        rows[fi].querySelectorAll('.pip').forEach((p,idx)=>p.classList.toggle('on',idx<v));
+        const nm=rows[fi].querySelector('.faction-val');if(nm)nm.textContent=v;
+      }
+    });
+  }
+  if(state.wheelMode)currentMode=state.wheelMode;
+  if(state.ytUrl)document.getElementById('yt-url').value=state.ytUrl;
+  ['emotion','power','dyad-e','dyad-p'].forEach(m=>{
+    const el=document.getElementById('tab-'+m);
+    if(el)el.classList.toggle('active',m===currentMode);
+  });
+  renderWheel();buildSliders();
+}
+
+function saveHTML(){
+  const state=buildState();
+  const imgs={};
+  ['portrait-img','gif-img','eg1i','eg2i','eg3i'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.src&&el.src.startsWith('data:'))imgs[id]=el.src;
+  });
+  const stateData=JSON.stringify({state,imgs});
+  const clone=document.documentElement.cloneNode(true);
+  const old=clone.querySelector('#_ss');if(old)old.remove();
+  const sc=clone.ownerDocument.createElement('script');
+  sc.id='_ss';
+  sc.textContent=`(function(){const _d=${stateData};window.addEventListener('DOMContentLoaded',function(){if(window._sr)return;window._sr=true;if(_d.state)restoreState(_d.state);if(_d.imgs){Object.entries(_d.imgs).forEach(([id,src])=>{const el=document.getElementById(id);if(el){el.src=src;el.style.display='block';const hmap={'portrait-img':'portrait-hint','gif-img':'gif-hint','eg1i':'eg1h','eg2i':'eg2h','eg3i':'eg3h'};const h=document.getElementById(hmap[id]);if(h)h.style.display='none'}});}});})();`;
+  clone.querySelector('body').appendChild(sc);
+  const html='<!DOCTYPE html>\\n'+clone.outerHTML;
+  const blob=new Blob([html],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const nm=(collectFields().name||'character').replace(/[^a-z0-9]/gi,'_').toLowerCase();
+  a.download=`INTV_${nm}_sheet.html`;a.click();URL.revokeObjectURL(a.href);
+  showStatus('SAVED TO FILE_');
+}
+
+function copyLink(){
+  const state=buildState();
+  const json=JSON.stringify(state);
+  const compressed=btoa(unescape(encodeURIComponent(json)));
+  const url=window.location.href.split('?')[0]+'?d='+compressed;
+  const fallback=()=>{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showStatus('LINK COPIED_')};
+  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>showStatus('LINK COPIED_')).catch(fallback)}else{fallback()}
+}
+
+function loadFromURL(){
+  const params=new URLSearchParams(window.location.search);const d=params.get('d');if(!d)return;
+  try{const json=decodeURIComponent(escape(atob(d)));const state=JSON.parse(json);restoreState(state);showStatus('DATA LOADED FROM LINK_')}catch(e){console.warn('URL load failed:',e)}
+}
+
+function showStatus(msg){
+  const el=document.getElementById('save-status');el.textContent='> '+msg;
+  setTimeout(()=>{el.textContent=''},3200);
+}
+
+// 8. BOOT SEQUENCE
+buildFactions();
+renderWheel();
+buildSliders();
+loadFromURL();
+</script>
